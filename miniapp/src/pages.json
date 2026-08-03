@@ -1,0 +1,54 @@
+{
+  "easycom": {
+    "autoscan": true,
+    "custom": {
+      "^u-(.*)": "uview-plus/components/u-$1/u-$1.vue"
+    }
+  },
+  "pages": [
+    {
+      "path": "pages/index/index",
+      "style": {
+        "navigationBarTitleText": "碰一碰好评卡",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/merchant/detail",
+      "style": {
+        "navigationBarTitleText": "商家详情",
+        "navigationBarBackgroundColor": "#ffffff"
+      }
+    },
+    {
+      "path": "pages/user/register-bind",
+      "style": {
+        "navigationBarTitleText": "商家入驻"
+      }
+    },
+    {
+      "path": "pages/promotion/jump",
+      "style": {
+        "navigationBarTitleText": "跳转到平台"
+      }
+    },
+    {
+      "path": "pages/wifi/index",
+      "style": {
+        "navigationBarTitleText": "WiFi连接"
+      }
+    },
+    {
+      "path": "pages/coupon/list",
+      "style": {
+        "navigationBarTitleText": "优惠券"
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "碰一碰好评卡",
+    "navigationBarBackgroundColor": "#ffffff",
+    "backgroundColor": "#f5f6fa"
+  }
+}

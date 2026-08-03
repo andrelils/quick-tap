@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.quicktap.mapper.DeviceMapper">
+
+    <resultMap id="DeviceResultMap" type="com.quicktap.entity.Device">
+        <id column="id" property="id"/>
+        <result column="device_no" property="deviceNo"/>
+        <result column="name" property="name"/>
+        <result column="merchant_id" property="merchantId"/>
+        <result column="type" property="type"/>
+        <result column="qrcode" property="qrcode"/>
+        <result column="status" property="status"/>
+        <result column="system_code" property="systemCode"/>
+        <result column="url" property="url"/>
+        <result column="location" property="location"/>
+        <result column="mac_address" property="macAddress"/>
+        <result column="ip_address" property="ipAddress"/>
+        <result column="bind_qr_code_id" property="bindQrCodeId"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <select id="selectById" resultMap="DeviceResultMap">
+        SELECT * FROM device WHERE id = #{id}
+    </select>
+
+    <select id="selectByDeviceNo" resultMap="DeviceResultMap">
+        SELECT * FROM device WHERE device_no = #{deviceNo}
+    </select>
+
+    <select id="selectByMerchantId" resultMap="DeviceResultMap">
+        SELECT * FROM device WHERE merchant_id = #{merchantId} ORDER BY created_at DESC
+    </select>
+
+    <select id="selectByMerchantIdAndStatus" resultMap="DeviceResultMap">
+        SELECT * FROM device WHERE merchant_id = #{merchantId} AND status = #{status} ORDER BY created_at DESC
+    </select>
+
+    <select id="selectByMerchantIdAndPage" resultMap="DeviceResultMap">
+        SELECT * FROM device WHERE merchant_id = #{merchantId} ORDER BY created_at DESC LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <select id="selectByBindQrCodeId" resultMap="DeviceResultMap">
+        SELECT * FROM device WHERE bind_qr_code_id = #{bindQrCodeId}
+    </select>
+
+    <select id="selectPage" resultMap="DeviceResultMap">
+        SELECT * FROM device ORDER BY created_at DESC LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO device (device_no, name, merchant_id, type, qrcode, status, system_code, url, created_at, updated_at)
+        VALUES (#{deviceNo}, #{name}, #{merchantId}, #{type}, #{qrcode}, #{status}, #{systemCode}, #{url}, NOW(), NOW())
+    </insert>
+
+    <insert id="insertBatch" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO device (device_no, name, merchant_id, type, qrcode, status, system_code, url, created_at, updated_at)
+        VALUES
+        <foreach collection="devices" item="device" separator=",">
+            (#{device.deviceNo}, #{device.name}, #{device.merchantId}, #{device.type}, #{device.qrcode}, #{device.status}, #{device.systemCode}, #{device.url}, NOW(), NOW())
+        </foreach>
+    </insert>
+
+    <update id="update">
+        UPDATE device SET
+        device_no = #{deviceNo},
+        name = #{name},
+        merchant_id = #{merchantId},
+        type = #{type},
+        qrcode = #{qrcode},
+        status = #{status},
+        system_code = #{systemCode},
+        url = #{url},
+        updated_at = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM device WHERE id = #{id}
+    </delete>
+
+    <update id="updateStatusByIds">
+        UPDATE device SET status = #{status}, updated_at = NOW() WHERE id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </update>
+
+    <delete id="deleteByMerchantId">
+        DELETE FROM device WHERE merchant_id = #{merchantId}
+    </delete>
+
+    <select id="countByMerchantId" resultType="long">
+        SELECT COUNT(*) FROM device WHERE merchant_id = #{merchantId}
+    </select>
+
+    <select id="countAll" resultType="long">
+        SELECT COUNT(*) FROM device
+    </select>
+
+</mapper>

@@ -1,0 +1,1 @@
+import{E as e,r}from"./index-TaY9M48F.js";const n=e("app",()=>{const e=r(null),n=r(null);return{currentMerchant:e,currentDevice:n,setCurrentMerchant:r=>{e.value=r},setCurrentDevice:e=>{n.value=e},clearCurrent:()=>{e.value=null,n.value=null}}});export{n as u};

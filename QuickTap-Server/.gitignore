@@ -1,0 +1,73 @@
+# IDE 文件
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Maven
+target/
+*.jar
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+.flattened-pom.xml
+
+# Java
+*.class
+*.log
+*.ctxt
+.classpath
+.factorypath
+.project
+.settings/
+.springBeans
+.sts4-cache
+
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Package Files
+*.rar
+*.zip
+*.tar.gz
+*.rar
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 环境变量（含敏感信息，禁止提交）
+.env
+.env.local
+.env.*.local
+.env.prod
+.env.dev
+.env.test
+quicktap.pid
+
+# Docker
+.dockerignore
+docker-compose.override.yml
+
+# Upload files
+uploads/
+temp/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# IDE
+.code-workspace
+*.sublime-workspace
+*.sublime-project

@@ -1,0 +1,1 @@
+"use strict";const e=require("../utils/request.js");exports.getReferrerList=()=>e.request.get("/user/referrer/list"),exports.getUserInfo=()=>e.request.get("/user/info"),exports.registerBind=s=>e.request.post("/user/register-bind",s),exports.sendSmsCode=s=>e.request.post("/user/send-sms",{phone:s}),exports.wechatLogin=s=>e.request.post("/user/auth/wechat-mini",{code:s});

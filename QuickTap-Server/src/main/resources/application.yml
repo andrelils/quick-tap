@@ -1,0 +1,95 @@
+spring:
+  application:
+    name: quicktap-server
+  profiles:
+    active: dev
+
+  # ============================================
+  # Redis 总开关（REDIS_ENABLED 环境变量控制）
+  # - 生产环境：REDIS_ENABLED=true，启用共享缓存与 Token 黑名单
+  # - 本地开发：REDIS_ENABLED=false（默认），缓存降级为 JVM 本地缓存
+  #   （ConcurrentMapCacheManager），Token 黑名单降级为日志模式
+  # 当 REDIS_ENABLED=false 时，对应的 application-{profile}.yml 中应
+  # 显式排除 RedisAutoConfiguration，避免 Spring Boot 去连接 localhost:6379。
+  # ============================================
+  redis:
+    enabled: ${REDIS_ENABLED:false}
+
+  # JPA/Hibernate配置
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: false
+
+  # Jackson JSON配置
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    default-property-inclusion: non_null
+
+  # 文件上传大小限制
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 100MB
+
+# MyBatis配置
+mybatis:
+  mapper-locations: classpath:mybatis/mapper/*.xml
+  type-aliases-package: com.quicktap.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    cache-enabled: true
+    lazy-loading-enabled: true
+    aggressive-lazy-loading-enabled: false
+    use-generated-keys: true
+    default-statement-timeout: 25000
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+# PageHelper分页配置
+pagehelper:
+  helper-dialect: mysql
+  reasonable: true
+  support-methods-arguments: true
+  params: count=countSql
+
+# 日志配置
+logging:
+  level:
+    root: info
+    com.quicktap: debug
+    org.springframework.web: info
+    org.springframework.security: debug
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/quicktap-server.log
+    max-size: 10MB
+    max-history: 10
+
+# 服务器配置
+server:
+  port: 8222
+  compression:
+    enabled: true
+    min-response-size: 1024
+  error:
+    include-message: always
+    include-binding-errors: always
+
+# 文件上传配置
+file:
+  upload:
+    max-size: 100MB
+    allowed-extensions: jpg,jpeg,png,gif,pdf,doc,docx,xls,xlsx
+    upload-dir: uploads/
+
+# SpringDoc OpenAPI 3.0 配置
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+  api-docs:
+    path: /v3/api-docs
+  show-actuator: false

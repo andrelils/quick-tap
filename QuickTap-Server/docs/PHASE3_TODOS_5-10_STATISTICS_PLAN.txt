@@ -1,0 +1,398 @@
+═══════════════════════════════════════════════════════════════════════════════
+    PHASE 3 TRACK 1: CATEGORY B - STATISTICS SERVICE IMPLEMENTATION PLAN
+═══════════════════════════════════════════════════════════════════════════════
+
+Category: Statistics Service Implementation (6 TODOs - 8 hours)
+Status: Ready for Implementation
+Files: src/main/java/com/quicktap/service/StatisticsService.java
+
+═══════════════════════════════════════════════════════════════════════════════
+IDENTIFIED TODOS & IMPLEMENTATION DETAILS
+═══════════════════════════════════════════════════════════════════════════════
+
+TODO 5: Query Actual Statistics from Database
+─────────────────────────────────────────────────────────────────────────────
+Location: StatisticsService.java - Line 28-37 (getSystemOverview method)
+Current Implementation: Mock data only (all zeros)
+Estimated Time: 1 hour
+Complexity: MEDIUM
+
+Required Implementation:
+```java
+@Autowired
+private AdminMapper adminMapper;
+
+@Autowired
+private UserMapper userMapper;
+
+@Autowired
+private OrderMapper orderMapper;
+
+@Autowired
+private MerchantMapper merchantMapper;
+
+public Map<String, Object> getSystemOverview() {
+    Map<String, Object> overview = new HashMap<>();
+
+    // Query actual data from database
+    long totalMerchants = merchantMapper.countAll();
+    long totalUsers = userMapper.countAll();
+    long totalOrders = orderMapper.countAll();
+    double totalRevenue = orderMapper.sumTotalAmount(); // Aggregate query
+
+    overview.put("totalMerchants", totalMerchants);
+    overview.put("totalUsers", totalUsers);
+    overview.put("totalOrders", totalOrders);
+    overview.put("totalRevenue", totalRevenue);
+
+    log.info("系统概览: 商户={}, 用户={}, 订单={}, 收入={}",
+        totalMerchants, totalUsers, totalOrders, totalRevenue);
+
+    return overview;
+}
+```
+
+Required Mapper Methods:
+- MerchantMapper.countAll() - Count all merchants
+- UserMapper.countAll() - Count all active users
+- OrderMapper.countAll() - Count all orders
+- OrderMapper.sumTotalAmount() - Sum total order amount
+
+─────────────────────────────────────────────────────────────────────────────
+
+TODO 6: Group and Aggregate Statistics by Date
+─────────────────────────────────────────────────────────────────────────────
+Location: StatisticsService.java - Line 43-52 (getTrendData method)
+Current Implementation: Empty placeholder lists
+Estimated Time: 1.5 hours
+Complexity: MEDIUM
+
+Required Implementation:
+```java
+public Map<String, Object> getTrendData(LocalDate startDate, LocalDate endDate) {
+    Map<String, Object> trend = new HashMap<>();
+
+    if (startDate == null || endDate == null) {
+        startDate = LocalDate.now().minusDays(30);
+        endDate = LocalDate.now();
+    }
+
+    // Query orders grouped by date
+    List<Map<String, Object>> ordersByDate = orderMapper
+        .selectOrdersGroupedByDate(startDate.atStartOfDay(), endDate.atTime(23, 59, 59));
+
+    // Query revenue grouped by date
+    List<Map<String, Object>> revenueByDate = orderMapper
+        .selectRevenueGroupedByDate(startDate.atStartOfDay(), endDate.atTime(23, 59, 59));
+
+    // Query new users by date
+    List<Map<String, Object>> newUsersByDate = userMapper
+        .selectNewUsersGroupedByDate(startDate.atStartOfDay(), endDate.atTime(23, 59, 59));
+
+    // Extract and format data
+    List<String> dates = new ArrayList<>();
+    List<Integer> orders = new ArrayList<>();
+    List<Double> revenue = new ArrayList<>();
+    List<Integer> newUsers = new ArrayList<>();
+
+    for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
+        dates.add(date.toString());
+
+        // Find matching data for this date
+        Map<String, Object> orderData = ordersByDate.stream()
+            .filter(m -> m.get("date").equals(date))
+            .findFirst()
+            .orElse(Map.of("count", 0));
+        orders.add(((Number) orderData.get("count")).intValue());
+
+        Map<String, Object> revenueData = revenueByDate.stream()
+            .filter(m -> m.get("date").equals(date))
+            .findFirst()
+            .orElse(Map.of("total", 0.0));
+        revenue.add(((Number) revenueData.get("total")).doubleValue());
+
+        Map<String, Object> userData = newUsersByDate.stream()
+            .filter(m -> m.get("date").equals(date))
+            .findFirst()
+            .orElse(Map.of("count", 0));
+        newUsers.add(((Number) userData.get("count")).intValue());
+    }
+
+    trend.put("startDate", startDate.toString());
+    trend.put("endDate", endDate.toString());
+    trend.put("dates", dates);
+    trend.put("orders", orders);
+    trend.put("revenue", revenue);
+    trend.put("newUsers", newUsers);
+
+    log.info("趋势数据: 时间范围={}到{}, 订单数={}, 总收入={}",
+        startDate, endDate, orders.stream().mapToInt(Integer::intValue).sum(),
+        revenue.stream().mapToDouble(Double::doubleValue).sum());
+
+    return trend;
+}
+```
+
+Required Mapper Methods:
+- OrderMapper.selectOrdersGroupedByDate(startDateTime, endDateTime)
+- OrderMapper.selectRevenueGroupedByDate(startDateTime, endDateTime)
+- UserMapper.selectNewUsersGroupedByDate(startDateTime, endDateTime)
+
+─────────────────────────────────────────────────────────────────────────────
+
+TODO 7: Query Merchant-Related Statistics
+─────────────────────────────────────────────────────────────────────────────
+Location: StatisticsService.java - Line 58-68 (getMerchantStatistics method)
+Current Implementation: Mock data only
+Estimated Time: 1 hour
+Complexity: MEDIUM
+
+Required Implementation:
+```java
+public Map<String, Object> getMerchantStatistics(Integer merchantId) {
+    Map<String, Object> stats = new HashMap<>();
+
+    // Query merchant orders
+    long merchantOrders = orderMapper.countByMerchantId(merchantId);
+
+    // Query merchant revenue
+    double merchantRevenue = orderMapper.sumAmountByMerchantId(merchantId);
+
+    // Query merchant devices
+    long merchantDevices = deviceMapper.countByMerchantId(merchantId);
+
+    // Query merchant users
+    long merchantUsers = userMapper.countByMerchantId(merchantId);
+
+    // Query merchant active status
+    Integer merchantStatus = merchantMapper.getStatusByMerchantId(merchantId);
+
+    stats.put("merchantId", merchantId);
+    stats.put("orders", merchantOrders);
+    stats.put("revenue", merchantRevenue);
+    stats.put("devices", merchantDevices);
+    stats.put("users", merchantUsers);
+    stats.put("status", merchantStatus);
+
+    log.info("商户统计: merchantId={}, 订单={}, 收入={}, 设备={}, 用户={}",
+        merchantId, merchantOrders, merchantRevenue, merchantDevices, merchantUsers);
+
+    return stats;
+}
+```
+
+Required Mapper Methods:
+- OrderMapper.countByMerchantId(merchantId)
+- OrderMapper.sumAmountByMerchantId(merchantId)
+- DeviceMapper.countByMerchantId(merchantId)
+- UserMapper.countByMerchantId(merchantId)
+- MerchantMapper.getStatusByMerchantId(merchantId)
+
+─────────────────────────────────────────────────────────────────────────────
+
+TODO 8: Get Merchant Rankings by Orders/Revenue
+─────────────────────────────────────────────────────────────────────────────
+Location: StatisticsService.java - Line 74-81 (getTopMerchants method)
+Current Implementation: Mock data only
+Estimated Time: 1.5 hours
+Complexity: MEDIUM
+
+Required Implementation:
+```java
+public Map<String, Object> getTopMerchants(Integer limit) {
+    Map<String, Object> result = new HashMap<>();
+
+    if (limit == null || limit <= 0) {
+        limit = 10;
+    }
+    if (limit > 1000) {
+        limit = 1000; // Safety limit
+    }
+
+    // Query merchants ranked by revenue (DESC)
+    List<Map<String, Object>> topByRevenue = merchantMapper
+        .selectTopMerchantsByRevenue(limit);
+
+    // Query merchants ranked by orders (DESC)
+    List<Map<String, Object>> topByOrders = merchantMapper
+        .selectTopMerchantsByOrders(limit);
+
+    result.put("limit", limit);
+    result.put("topByRevenue", topByRevenue); // {merchantId, name, totalRevenue, orderCount}
+    result.put("topByOrders", topByOrders);   // {merchantId, name, orderCount, totalRevenue}
+
+    log.info("商户排名: 按收入排名 TOP {}, 按订单排名 TOP {}", limit, limit);
+
+    return result;
+}
+```
+
+Required Mapper Methods:
+- MerchantMapper.selectTopMerchantsByRevenue(limit)
+- MerchantMapper.selectTopMerchantsByOrders(limit)
+
+SQL Examples:
+```sql
+-- Top merchants by revenue
+SELECT m.id, m.name, SUM(o.total_amount) as total_revenue, COUNT(o.id) as order_count
+FROM merchant m
+LEFT JOIN orders o ON m.id = o.merchant_id
+GROUP BY m.id, m.name
+ORDER BY total_revenue DESC
+LIMIT #{limit}
+
+-- Top merchants by orders
+SELECT m.id, m.name, COUNT(o.id) as order_count, SUM(o.total_amount) as total_revenue
+FROM merchant m
+LEFT JOIN orders o ON m.id = o.merchant_id
+GROUP BY m.id, m.name
+ORDER BY order_count DESC
+LIMIT #{limit}
+```
+
+─────────────────────────────────────────────────────────────────────────────
+
+TODO 9: Query AI Generation Record Counts
+─────────────────────────────────────────────────────────────────────────────
+Location: StatisticsService.java - Line 87-89 (getTotalAIGenerations method)
+Current Implementation: Mock data (always returns 0)
+Estimated Time: 0.5 hours
+Complexity: EASY
+
+Required Implementation:
+```java
+@Autowired
+private AiGenerateRecordMapper aiGenerateRecordMapper;
+
+public Integer getTotalAIGenerations() {
+    // Query total successful generations (status = 1)
+    int totalGenerations = (int) aiGenerateRecordMapper.countByStatus(1);
+
+    log.info("AI生成总数: {}", totalGenerations);
+
+    return totalGenerations;
+}
+```
+
+Required Mapper Methods:
+- AiGenerateRecordMapper.countByStatus(status) - Already has countAll() method
+
+─────────────────────────────────────────────────────────────────────────────
+
+TODO 10: Group AI Statistics by Type (Text, Image, Video)
+─────────────────────────────────────────────────────────────────────────────
+Location: StatisticsService.java - Line 95-103 (getAIGenerationsByType method)
+Current Implementation: Mock data (all zeros)
+Estimated Time: 1.5 hours
+Complexity: MEDIUM
+
+Required Implementation:
+```java
+public Map<String, Object> getAIGenerationsByType() {
+    Map<String, Object> result = new HashMap<>();
+
+    // Query AI generations by type
+    long textCount = aiGenerateRecordMapper.countByTypeAndStatus("text", 1);
+    long imageCount = aiGenerateRecordMapper.countByTypeAndStatus("image", 1);
+    long videoCount = aiGenerateRecordMapper.countByTypeAndStatus("video", 1);
+
+    // Calculate totals and percentages
+    long totalCount = textCount + imageCount + videoCount;
+
+    Map<String, Object> textStats = new HashMap<>();
+    textStats.put("count", textCount);
+    textStats.put("percentage", totalCount > 0 ? (textCount * 100.0 / totalCount) : 0);
+
+    Map<String, Object> imageStats = new HashMap<>();
+    imageStats.put("count", imageCount);
+    imageStats.put("percentage", totalCount > 0 ? (imageCount * 100.0 / totalCount) : 0);
+
+    Map<String, Object> videoStats = new HashMap<>();
+    videoStats.put("count", videoCount);
+    videoStats.put("percentage", totalCount > 0 ? (videoCount * 100.0 / totalCount) : 0);
+
+    result.put("total", totalCount);
+    result.put("text", textStats);
+    result.put("image", imageStats);
+    result.put("video", videoStats);
+
+    log.info("AI生成统计: 文本={}, 图片={}, 视频={}, 总计={}",
+        textCount, imageCount, videoCount, totalCount);
+
+    return result;
+}
+```
+
+Required Mapper Methods:
+- AiGenerateRecordMapper.countByTypeAndStatus(type, status)
+
+═══════════════════════════════════════════════════════════════════════════════
+REQUIRED MAPPER METHODS SUMMARY
+═══════════════════════════════════════════════════════════════════════════════
+
+AdminMapper:
+  - (No new methods needed - exists)
+
+UserMapper:
+  - countAll()
+  - countByMerchantId(merchantId)
+  - selectNewUsersGroupedByDate(startDateTime, endDateTime)
+
+OrderMapper:
+  - countAll()
+  - sumTotalAmount()
+  - selectOrdersGroupedByDate(startDateTime, endDateTime)
+  - selectRevenueGroupedByDate(startDateTime, endDateTime)
+  - countByMerchantId(merchantId)
+  - sumAmountByMerchantId(merchantId)
+
+MerchantMapper:
+  - countAll()
+  - getStatusByMerchantId(merchantId)
+  - selectTopMerchantsByRevenue(limit)
+  - selectTopMerchantsByOrders(limit)
+
+DeviceMapper:
+  - countByMerchantId(merchantId)
+
+AiGenerateRecordMapper:
+  - countByStatus(status)
+  - countByTypeAndStatus(type, status)
+
+═══════════════════════════════════════════════════════════════════════════════
+IMPLEMENTATION ROADMAP FOR STATISTICS SERVICE
+═══════════════════════════════════════════════════════════════════════════════
+
+Phase 1: Mapper Methods (2-3 hours)
+  ✓ Add all required mapper method signatures to Java interfaces
+  ✓ Implement SQL queries in mapper XML files
+  ✓ Add @Autowired dependencies to StatisticsService
+
+Phase 2: Service Implementation (3-4 hours)
+  ✓ Implement getSystemOverview() with database queries
+  ✓ Implement getTrendData() with date grouping
+  ✓ Implement getMerchantStatistics() with merchant metrics
+  ✓ Implement getTopMerchants() with ranking queries
+  ✓ Implement getTotalAIGenerations() with count query
+  ✓ Implement getAIGenerationsByType() with type grouping
+
+Phase 3: Error Handling & Caching (1 hour)
+  ✓ Add null checks and error handling
+  ✓ Add logging for all queries
+  ✓ Implement caching with @Cacheable for expensive queries
+  ✓ Test with different date ranges and edge cases
+
+═══════════════════════════════════════════════════════════════════════════════
+NEXT STEPS
+═══════════════════════════════════════════════════════════════════════════════
+
+1. Update all Mapper interfaces with required method signatures
+2. Implement SQL queries in mapper XML files for each mapper
+3. Update StatisticsService with full implementations
+4. Add error handling and logging throughout
+5. Test each method independently
+6. Test integration with controllers
+7. Measure query performance and add indexes if needed
+8. Implement caching for read-heavy statistics
+
+═══════════════════════════════════════════════════════════════════════════════

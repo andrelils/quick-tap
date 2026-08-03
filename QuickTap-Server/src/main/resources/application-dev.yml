@@ -1,0 +1,148 @@
+spring:
+  datasource:
+    # 开发环境：连接到远程 MySQL 数据库
+    url: jdbc:mysql://154.8.138.48:3306/andre_sql?useUnicode=true&characterEncoding=UTF-8&connectionCollation=utf8mb4_unicode_ci&allowMultiQueries=true&zeroDateTimeBehavior=convertToNull&serverTimezone=GMT%2B8
+    username: ${DB_USERNAME:andre_sql}
+    password: "${DB_PASSWORD:lls_970401}"
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      connection-timeout: 30000
+
+  # Redis 配置（开发环境默认关闭）
+  # 本地想启用 Redis 时：REDIS_ENABLED=true，并起一个 Redis：
+  #   - Docker:  docker run -d -p 6379:6379 redis:7-alpine
+  #   - Windows: 下载 Redis-x64-5.0.14.1.zip，解压后运行 redis-server.exe
+  # 未启用 Redis 时：
+  #   - @Cacheable 注解走 JVM 本地缓存（ConcurrentMapCacheManager）
+  #   - Token 黑名单降级为日志模式（无实际拉黑效果，仅调试用）
+  redis:
+    enabled: ${REDIS_ENABLED:false}
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    password: ${REDIS_PASSWORD:}
+    database: ${REDIS_DATABASE:0}
+    timeout: ${REDIS_TIMEOUT:3000}
+    connect-timeout: ${REDIS_CONNECT_TIMEOUT:2000}
+    lettuce:
+      pool:
+        max-active: 8
+        max-idle: 8
+        min-idle: 2
+        max-wait: -1ms
+        time-between-eviction-runs: 60000
+      shutdown-timeout: 100ms
+
+  # Kafka配置（开发环境）
+  kafka:
+    # 支持两种模式：
+    # 1. 本地: localhost:9092
+    # 2. Docker: kafka:29092 (内部通信) 或 localhost:9092 (外部通信)
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all
+      retries: 3
+    consumer:
+      group-id: quicktap-consumer-group
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      max-poll-records: 500
+      properties:
+        spring.json.trusted.packages: "*"
+
+# Seata 分布式事务配置（开发环境默认关闭，支付联调时可通过 SEATA_ENABLED=true 开启）
+# 使用 file 注册模式直连 Seata Server，无需 Nacos
+seata:
+  enabled: ${SEATA_ENABLED:false}
+  application-id: quicktap-server-dev
+  tx-service-group: quicktap_tx_group_dev
+  registry:
+    type: file
+    file:
+      name: ./file.conf
+  config:
+    type: file
+    file:
+      name: ./file.conf
+  service:
+    vgroup-mapping:
+      quicktap_tx_group_dev: default
+    grouplist:
+      # 开发环境 Seata Server 地址，默认本地 8091
+      default: ${SEATA_SERVER_ADDR:127.0.0.1:8091}
+  enable-auto-data-source-proxy: true
+  data-source-proxy-mode: AT
+  client:
+    rm:
+      report-success-enable: true
+    tm:
+      commit-retry-count: 3
+      rollback-retry-count: 3
+
+# JWT配置
+jwt:
+  # 开发环境默认密钥（仅用于本地开发，生产环境必须通过 JWT_SECRET 环境变量设置）
+  secret: ${JWT_SECRET:QuickTapDevJwtSecretKeyForDevelopmentOnlyDoNotUseInProduction2026}
+  expiration: 604800000  # 7天（毫秒）
+  header: Authorization
+  prefix: Bearer
+
+# 权限白名单配置
+auth:
+  whitelist:
+    # 健康检查和系统信息
+    - /api/health
+    - /api/info
+    - /api/time
+    # 认证接口
+    - /api/admin/auth/login
+    - /api/user/auth/wechat-mini
+    - /api/user/register
+    - /api/user/login
+    - /api/refresh-token
+    - /api/validate-token
+    - /api/logout
+    - /api/csrf-token
+    # 公开查询接口
+    - /api/promotion/platforms
+    - /api/promotion/platform
+    - /api/device/scan
+    # Swagger API 文档
+    - /doc.html
+    - /webjars
+    - /swagger-ui
+    - /v3/api-docs
+
+# CORS 允许的源（开发环境）
+allowed:
+  origins: http://localhost:3000,http://127.0.0.1:3000,http://localhost:8080,http://localhost:5173,http://localhost:5174,http://localhost:5175,http://127.0.0.1:5173,http://127.0.0.1:5174,http://127.0.0.1:5175
+
+# 加密密钥配置（开发环境 - 固定默认密钥，生产环境通过 ENCRYPTION_KEY 覆盖）
+# 生成方法: openssl rand -base64 32
+encryption:
+  key: ${ENCRYPTION_KEY:cahZqdShHM0SSojE5qRoOU8RQRvfyrNGcXWNq3wGZn0=}
+
+# 服务器配置
+server:
+  port: 8222
+  compression:
+    enabled: true
+    min-response-size: 1024
+  error:
+    include-message: always
+    include-binding-errors: always
+
+# 日志配置
+logging:
+  level:
+    root: INFO
+    com.quicktap: DEBUG
+    org.springframework.security: DEBUG
+  pattern:
+    console: "[%d{yyyy-MM-dd HH:mm:ss.SSS}] [%logger{36}] [%X{traceId}] [%thread] [%-5level] %msg%n"
+    file: "[%d{yyyy-MM-dd HH:mm:ss.SSS}] [%logger{36}] [%X{traceId}] [%thread] [%-5level] %msg%n"

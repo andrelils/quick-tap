@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.quicktap.mapper.AdminMapper">
+
+    <resultMap id="AdminResultMap" type="com.quicktap.entity.Admin">
+        <id column="id" property="id"/>
+        <result column="username" property="username"/>
+        <result column="password" property="password"/>
+        <result column="nickname" property="nickname"/>
+        <result column="email" property="email"/>
+        <result column="phone" property="phone"/>
+        <result column="role" property="role"/>
+        <result column="merchant_id" property="merchantId"/>
+        <result column="status" property="status"/>
+        <result column="user_code" property="userCode"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <select id="selectById" resultMap="AdminResultMap">
+        SELECT * FROM admin WHERE id = #{id}
+    </select>
+
+    <select id="selectByUsername" resultMap="AdminResultMap">
+        SELECT * FROM admin WHERE username = #{username}
+    </select>
+
+    <select id="selectAll" resultMap="AdminResultMap">
+        SELECT * FROM admin ORDER BY created_at DESC
+    </select>
+
+    <select id="selectByMerchantId" resultMap="AdminResultMap">
+        SELECT * FROM admin WHERE merchant_id = #{merchantId} ORDER BY created_at DESC
+    </select>
+
+    <select id="selectPage" resultMap="AdminResultMap">
+        SELECT * FROM admin ORDER BY created_at DESC LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO admin (username, password, nickname, email, phone, role, merchant_id, status, user_code, created_at, updated_at)
+        VALUES (#{username}, #{password}, #{nickname}, #{email}, #{phone}, #{role}, #{merchantId}, #{status}, #{userCode}, NOW(), NOW())
+    </insert>
+
+    <update id="update">
+        UPDATE admin SET
+        username = #{username},
+        password = #{password},
+        nickname = #{nickname},
+        email = #{email},
+        phone = #{phone},
+        role = #{role},
+        merchant_id = #{merchantId},
+        status = #{status},
+        user_code = #{userCode},
+        updated_at = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM admin WHERE id = #{id}
+    </delete>
+
+    <select id="countAll" resultType="int">
+        SELECT COUNT(*) FROM admin
+    </select>
+
+</mapper>

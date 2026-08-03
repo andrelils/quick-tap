@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.quicktap.mapper.AiGenerateRecordMapper">
+
+    <resultMap id="AiGenerateRecordResultMap" type="com.quicktap.entity.AiGenerateRecord">
+        <id column="id" property="id"/>
+        <result column="record_id" property="recordId"/>
+        <result column="merchant_id" property="merchantId"/>
+        <result column="type" property="type"/>
+        <result column="prompt" property="prompt"/>
+        <result column="result" property="result"/>
+        <result column="status" property="status"/>
+        <result column="token_usage" property="tokenUsage"/>
+        <result column="cost" property="cost"/>
+        <result column="mode" property="mode"/>
+        <result column="corpus_id" property="corpusId"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <select id="selectById" resultMap="AiGenerateRecordResultMap">
+        SELECT * FROM ai_generate_record WHERE id = #{id}
+    </select>
+
+    <select id="selectByRecordId" resultMap="AiGenerateRecordResultMap">
+        SELECT * FROM ai_generate_record WHERE record_id = #{recordId}
+    </select>
+
+    <select id="selectByMerchantId" resultMap="AiGenerateRecordResultMap">
+        SELECT * FROM ai_generate_record WHERE merchant_id = #{merchantId} ORDER BY created_at DESC
+    </select>
+
+    <select id="selectByType" resultMap="AiGenerateRecordResultMap">
+        SELECT * FROM ai_generate_record WHERE type = #{type} ORDER BY created_at DESC
+    </select>
+
+    <select id="selectAll" resultMap="AiGenerateRecordResultMap">
+        SELECT * FROM ai_generate_record ORDER BY created_at DESC
+    </select>
+
+    <select id="selectPage" resultMap="AiGenerateRecordResultMap">
+        SELECT * FROM ai_generate_record ORDER BY created_at DESC LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <select id="selectPageByMerchantAndType" resultMap="AiGenerateRecordResultMap">
+        SELECT * FROM ai_generate_record
+        WHERE merchant_id = #{merchantId}
+        <if test="type != null and type != ''">
+            AND type = #{type}
+        </if>
+        ORDER BY created_at DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <select id="countByMerchantAndType" resultType="long">
+        SELECT COUNT(*) FROM ai_generate_record
+        WHERE merchant_id = #{merchantId}
+        <if test="type != null and type != ''">
+            AND type = #{type}
+        </if>
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO ai_generate_record (record_id, merchant_id, type, prompt, result, status, token_usage, cost, mode, corpus_id, created_at, updated_at)
+        VALUES (#{recordId}, #{merchantId}, #{type}, #{prompt}, #{result}, #{status}, #{tokenUsage}, #{cost}, #{mode}, #{corpusId}, NOW(), NOW())
+    </insert>
+
+    <update id="update">
+        UPDATE ai_generate_record SET
+        record_id = #{recordId},
+        merchant_id = #{merchantId},
+        type = #{type},
+        prompt = #{prompt},
+        result = #{result},
+        status = #{status},
+        token_usage = #{tokenUsage},
+        cost = #{cost},
+        mode = #{mode},
+        corpus_id = #{corpusId},
+        updated_at = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM ai_generate_record WHERE id = #{id}
+    </delete>
+
+    <select id="countAll" resultType="int">
+        SELECT COUNT(*) FROM ai_generate_record
+    </select>
+
+    <!-- Statistics Service Methods -->
+
+    <select id="countByStatus" resultType="long">
+        SELECT COUNT(*) FROM ai_generate_record WHERE status = #{status}
+    </select>
+
+    <select id="countByTypeAndStatus" resultType="long">
+        SELECT COUNT(*) FROM ai_generate_record WHERE type = #{type} AND status = #{status}
+    </select>
+
+</mapper>

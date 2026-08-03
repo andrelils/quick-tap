@@ -1,0 +1,1 @@
+"use strict";const e=require("../../common/vendor.js"),o={__name:"scan",setup(o){const t=()=>{e.index.showToast({title:"扫描功能开发中",icon:"none"})};return(o,n)=>({a:e.o(t)})}},t=e._export_sfc(o,[["__scopeId","data-v-ede36133"]]);wx.createPage(t);

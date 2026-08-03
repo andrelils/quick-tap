@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.quicktap.mapper.CouponMapper">
+
+    <resultMap id="CouponResultMap" type="com.quicktap.entity.Coupon">
+        <id column="id" property="id"/>
+        <result column="merchant_id" property="merchantId"/>
+        <result column="title" property="title"/>
+        <result column="type" property="type"/>
+        <result column="amount" property="amount"/>
+        <result column="min_amount" property="minAmount"/>
+        <result column="total_count" property="totalCount"/>
+        <result column="remain_count" property="remainCount"/>
+        <result column="start_time" property="startTime"/>
+        <result column="end_time" property="endTime"/>
+        <result column="status" property="status"/>
+        <result column="link" property="link"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <select id="selectById" resultMap="CouponResultMap">
+        SELECT * FROM coupon WHERE id = #{id}
+    </select>
+
+    <select id="selectByMerchantId" resultMap="CouponResultMap">
+        SELECT * FROM coupon WHERE merchant_id = #{merchantId} ORDER BY created_at DESC
+    </select>
+
+    <select id="selectByMerchantIdAndPage" resultMap="CouponResultMap">
+        SELECT * FROM coupon WHERE merchant_id = #{merchantId} ORDER BY created_at DESC LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <select id="selectPage" resultMap="CouponResultMap">
+        SELECT * FROM coupon ORDER BY created_at DESC LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO coupon (merchant_id, title, type, amount, min_amount, total_count, remain_count, start_time, end_time, status, link, created_at, updated_at)
+        VALUES (#{merchantId}, #{title}, #{type}, #{amount}, #{minAmount}, #{totalCount}, #{remainCount}, #{startTime}, #{endTime}, #{status}, #{link}, NOW(), NOW())
+    </insert>
+
+    <update id="update">
+        UPDATE coupon SET
+        merchant_id = #{merchantId},
+        title = #{title},
+        type = #{type},
+        amount = #{amount},
+        min_amount = #{minAmount},
+        total_count = #{totalCount},
+        remain_count = #{remainCount},
+        start_time = #{startTime},
+        end_time = #{endTime},
+        status = #{status},
+        link = #{link},
+        updated_at = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM coupon WHERE id = #{id}
+    </delete>
+
+    <select id="countByMerchantId" resultType="long">
+        SELECT COUNT(*) FROM coupon WHERE merchant_id = #{merchantId}
+    </select>
+
+    <select id="countAll" resultType="long">
+        SELECT COUNT(*) FROM coupon
+    </select>
+
+    <!-- 按商户ID和状态查询 -->
+    <select id="selectByMerchantIdAndStatus" resultMap="CouponResultMap">
+        SELECT * FROM coupon WHERE merchant_id = #{merchantId} AND status = #{status} ORDER BY created_at DESC
+    </select>
+
+    <!-- 优惠券剩余数量递减 (使用时) -->
+    <update id="updateRemainCountDecrement">
+        UPDATE coupon SET remain_count = remain_count - 1, updated_at = NOW() WHERE id = #{id} AND remain_count > 0
+    </update>
+
+    <!-- 优惠券剩余数量递增 (退回时) -->
+    <update id="updateRemainCountIncrement">
+        UPDATE coupon SET remain_count = remain_count + 1, updated_at = NOW() WHERE id = #{id} AND remain_count <![CDATA[<]]> total_count
+    </update>
+
+    <!-- 过期卡券状态更新 -->
+    <update id="updateExpiredCoupons">
+        UPDATE coupon SET status = 2, updated_at = NOW() WHERE status = 1 AND end_time &lt; #{beforeTime}
+    </update>
+
+</mapper>

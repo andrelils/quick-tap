@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.quicktap.mapper.QrCodeMapper">
+
+    <!-- 插入二维码 -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO qr_code (code, device_id, merchant_id, qr_data, qr_image_url, type, status, created_at, updated_at)
+        VALUES (#{code}, #{deviceId}, #{merchantId}, #{qrData}, #{qrImageUrl}, #{type}, #{status}, NOW(), NOW())
+    </insert>
+
+    <!-- 批量插入二维码（使用 foreach 拼接单条 INSERT 多 VALUES，减少数据库往返次数） -->
+    <insert id="batchInsert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO qr_code (code, device_id, merchant_id, qr_data, qr_image_url, type, status, created_at, updated_at)
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+            (#{item.code}, #{item.deviceId}, #{item.merchantId}, #{item.qrData},
+             #{item.qrImageUrl}, #{item.type}, #{item.status}, NOW(), NOW())
+        </foreach>
+    </insert>
+
+    <!-- 按 ID 查询 -->
+    <select id="selectById" resultType="com.quicktap.entity.QrCode">
+        SELECT * FROM qr_code WHERE id = #{id}
+    </select>
+
+    <!-- 按编码查询 -->
+    <select id="selectByCode" resultType="com.quicktap.entity.QrCode">
+        SELECT * FROM qr_code WHERE code = #{code}
+    </select>
+
+    <!-- 按设备 ID 查询 -->
+    <select id="selectByDeviceId" resultType="com.quicktap.entity.QrCode">
+        SELECT * FROM qr_code WHERE device_id = #{deviceId} ORDER BY created_at DESC
+    </select>
+
+    <!-- 按商户 ID 查询 -->
+    <select id="selectByMerchantId" resultType="com.quicktap.entity.QrCode">
+        SELECT * FROM qr_code WHERE merchant_id = #{merchantId} ORDER BY created_at DESC
+    </select>
+
+    <!-- 查询所有二维码 -->
+    <select id="selectAll" resultType="com.quicktap.entity.QrCode">
+        SELECT * FROM qr_code ORDER BY created_at DESC
+    </select>
+
+    <!-- 更新二维码 -->
+    <update id="update">
+        UPDATE qr_code
+        SET merchant_id = #{merchantId},
+            qr_image_url = #{qrImageUrl},
+            status = #{status},
+            updated_at = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <!-- 更新状态 -->
+    <update id="updateStatus">
+        UPDATE qr_code
+        SET status = #{status},
+            updated_at = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <!-- 删除二维码 -->
+    <delete id="deleteById">
+        DELETE FROM qr_code WHERE id = #{id}
+    </delete>
+
+    <!-- 按设备 ID 删除 -->
+    <delete id="deleteByDeviceId">
+        DELETE FROM qr_code WHERE device_id = #{deviceId}
+    </delete>
+
+    <!-- 获取指定状态的二维码数量 -->
+    <select id="countByStatus" resultType="int">
+        SELECT COUNT(*) FROM qr_code WHERE merchant_id = #{merchantId} AND status = #{status}
+    </select>
+
+    <!-- 检查编码是否已存在 -->
+    <select id="countByCode" resultType="int">
+        SELECT COUNT(*) FROM qr_code WHERE code = #{code}
+    </select>
+
+    <!-- 获取二维码总数 -->
+    <select id="countAll" resultType="int">
+        SELECT COUNT(*) FROM qr_code
+    </select>
+
+</mapper>

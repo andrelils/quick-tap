@@ -1,0 +1,1 @@
+import{fB as s}from"./index-yql0dXsh.js";const a=t=>s.get("/admin/statistics/overview",{params:t}),i=t=>s.get("/admin/statistics/trend",{params:t}),r=t=>s.get("/admin/statistics/top/merchants",{params:t}),n=t=>s.get("/admin/statistics/ai-stats",{params:t});export{i as a,n as b,r as c,a as g};

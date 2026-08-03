@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.quicktap.mapper.AiConfigMapper">
+
+    <!-- 插入 AI 配置 -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO ai_config (merchant_id, text_model, image_model, video_model, api_key, api_secret, enabled, created_at, updated_at)
+        VALUES (#{merchantId}, #{textModel}, #{imageModel}, #{videoModel}, #{apiKey}, #{apiSecret}, #{enabled}, NOW(), NOW())
+    </insert>
+
+    <!-- 按 ID 查询 -->
+    <select id="selectById" resultType="com.quicktap.entity.AiConfig">
+        SELECT * FROM ai_config WHERE id = #{id}
+    </select>
+
+    <!-- 查询全局配置（merchant_id IS NULL） -->
+    <select id="selectGlobalConfig" resultType="com.quicktap.entity.AiConfig">
+        SELECT * FROM ai_config WHERE merchant_id IS NULL LIMIT 1
+    </select>
+
+    <!-- 查询商户级配置 -->
+    <select id="selectByMerchantId" resultType="com.quicktap.entity.AiConfig">
+        SELECT * FROM ai_config WHERE merchant_id = #{merchantId}
+    </select>
+
+    <!-- 更新 AI 配置 -->
+    <update id="update">
+        UPDATE ai_config
+        SET text_model = #{textModel},
+            image_model = #{imageModel},
+            video_model = #{videoModel},
+            api_key = #{apiKey},
+            api_secret = #{apiSecret},
+            enabled = #{enabled},
+            updated_at = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <!-- 删除 AI 配置 -->
+    <delete id="deleteById">
+        DELETE FROM ai_config WHERE id = #{id}
+    </delete>
+
+    <!-- 按商户 ID 删除 -->
+    <delete id="deleteByMerchantId">
+        DELETE FROM ai_config WHERE merchant_id = #{merchantId}
+    </delete>
+
+    <!-- 检查商户是否有配置 -->
+    <select id="countByMerchantId" resultType="int">
+        SELECT COUNT(*) FROM ai_config WHERE merchant_id = #{merchantId}
+    </select>
+
+</mapper>

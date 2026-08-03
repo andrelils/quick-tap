@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "碰一碰好评卡",
+  "navigationStyle": "custom",
+  "usingComponents": {
+    "u-icon": "../../node-modules/uview-plus/components/u-icon/u-icon"
+  }
+}

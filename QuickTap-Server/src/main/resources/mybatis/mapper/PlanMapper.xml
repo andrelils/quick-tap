@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.quicktap.mapper.PlanMapper">
+
+    <resultMap id="PlanResultMap" type="com.quicktap.entity.Plan">
+        <id column="id" property="id"/>
+        <result column="name" property="name"/>
+        <result column="level" property="level"/>
+        <result column="price" property="price"/>
+        <result column="duration_months" property="durationMonths"/>
+        <result column="device_count" property="deviceCount"/>
+        <result column="text_quota" property="textQuota"/>
+        <result column="image_quota" property="imageQuota"/>
+        <result column="video_quota" property="videoQuota"/>
+        <result column="storage_limit" property="storageLimit"/>
+        <result column="recommend" property="recommend"/>
+        <result column="status" property="status"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <select id="selectById" resultMap="PlanResultMap">
+        SELECT * FROM plan WHERE id = #{id}
+    </select>
+
+    <select id="selectByLevel" resultMap="PlanResultMap">
+        SELECT * FROM plan WHERE level = #{level} ORDER BY price ASC
+    </select>
+
+    <select id="selectByStatus" resultMap="PlanResultMap">
+        SELECT * FROM plan WHERE status = #{status} ORDER BY price ASC
+    </select>
+
+    <select id="selectAll" resultMap="PlanResultMap">
+        SELECT * FROM plan ORDER BY price ASC
+    </select>
+
+    <select id="selectPage" resultMap="PlanResultMap">
+        SELECT * FROM plan ORDER BY price ASC LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <select id="selectRecommended" resultMap="PlanResultMap">
+        SELECT * FROM plan WHERE recommend = 1 AND status = 1 ORDER BY price ASC
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO plan (name, level, price, duration_months, device_count, text_quota, image_quota, video_quota, storage_limit, recommend, status, created_at, updated_at)
+        VALUES (#{name}, #{level}, #{price}, #{durationMonths}, #{deviceCount}, #{textQuota}, #{imageQuota}, #{videoQuota}, #{storageLimit}, #{recommend}, #{status}, NOW(), NOW())
+    </insert>
+
+    <update id="update">
+        UPDATE plan SET
+        name = #{name},
+        level = #{level},
+        price = #{price},
+        duration_months = #{durationMonths},
+        device_count = #{deviceCount},
+        text_quota = #{textQuota},
+        image_quota = #{imageQuota},
+        video_quota = #{videoQuota},
+        storage_limit = #{storageLimit},
+        recommend = #{recommend},
+        status = #{status},
+        updated_at = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM plan WHERE id = #{id}
+    </delete>
+
+    <select id="countAll" resultType="long">
+        SELECT COUNT(*) FROM plan
+    </select>
+
+</mapper>

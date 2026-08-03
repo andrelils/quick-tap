@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.quicktap.mapper.OrderRecordMapper">
+
+    <resultMap id="OrderRecordResultMap" type="com.quicktap.entity.OrderRecord">
+        <id column="id" property="id"/>
+        <result column="order_no" property="orderNo"/>
+        <result column="merchant_id" property="merchantId"/>
+        <result column="plan_id" property="planId"/>
+        <result column="amount" property="amount"/>
+        <result column="status" property="status"/>
+        <result column="expire_at" property="expireAt"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <select id="selectById" resultMap="OrderRecordResultMap">
+        SELECT * FROM order_record WHERE id = #{id}
+    </select>
+
+    <select id="selectByOrderNo" resultMap="OrderRecordResultMap">
+        SELECT * FROM order_record WHERE order_no = #{orderNo}
+    </select>
+
+    <select id="selectByMerchantId" resultMap="OrderRecordResultMap">
+        SELECT * FROM order_record WHERE merchant_id = #{merchantId} ORDER BY created_at DESC
+    </select>
+
+    <select id="selectAll" resultMap="OrderRecordResultMap">
+        SELECT * FROM order_record ORDER BY created_at DESC
+    </select>
+
+    <select id="selectPage" resultMap="OrderRecordResultMap">
+        SELECT * FROM order_record ORDER BY created_at DESC LIMIT #{offset}, #{limit}
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO order_record (order_no, merchant_id, plan_id, amount, status, expire_at, created_at, updated_at)
+        VALUES (#{orderNo}, #{merchantId}, #{planId}, #{amount}, #{status}, #{expireAt}, NOW(), NOW())
+    </insert>
+
+    <update id="update">
+        UPDATE order_record SET
+        order_no = #{orderNo},
+        merchant_id = #{merchantId},
+        plan_id = #{planId},
+        amount = #{amount},
+        status = #{status},
+        expire_at = #{expireAt},
+        updated_at = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM order_record WHERE id = #{id}
+    </delete>
+
+    <select id="countAll" resultType="int">
+        SELECT COUNT(*) FROM order_record
+    </select>
+
+    <delete id="deleteExpiredOrders">
+        DELETE FROM order_record WHERE status = 'pending' AND expire_at &lt; #{beforeTime}
+    </delete>
+
+</mapper>

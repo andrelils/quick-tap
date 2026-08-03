@@ -1,0 +1,1 @@
+import{r as e}from"./request.CkbwzS4p.js";const t=t=>e.get("/merchant/check-bind",t),r=t=>e.get(`/merchant/info/${t}`),a=t=>e.get("/merchant/wifi",{merchantId:t}),s=t=>e.post("/merchant/register",t);export{a,t as c,r as g,s as r};

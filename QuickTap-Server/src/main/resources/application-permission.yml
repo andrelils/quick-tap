@@ -1,0 +1,121 @@
+# ============================================
+# 权限矩阵配置
+# ============================================
+permission:
+  roles:
+    SUPER_ADMIN:
+      resources:
+        corpus:
+          operations: [create, read, update, delete, list, export, import]
+          visibility: all
+          needsApproval: false
+          auditLogging: true
+        coupon:
+          operations: [create, read, update, delete, list, export]
+          visibility: all
+          needsApproval: false
+          auditLogging: true
+        device:
+          operations: [create, read, update, delete, list, bind_qrcode]
+          visibility: all
+          needsApproval: false
+          auditLogging: true
+        promotion:
+          operations: [create, read, update, delete, list, manage_platform]
+          visibility: all
+          needsApproval: false
+          auditLogging: true
+        ai_config:
+          operations: [create, read, update, delete, list]
+          visibility: all
+          needsApproval: false
+          auditLogging: true
+        user:
+          operations: [create, read, update, delete, list]
+          visibility: all
+          needsApproval: false
+          auditLogging: true
+
+    ADMIN:
+      resources:
+        corpus:
+          operations: [read, list, export]
+          visibility: all
+          needsApproval: false
+          auditLogging: true
+        coupon:
+          operations: [read, list]
+          visibility: all
+          needsApproval: false
+          auditLogging: false
+        device:
+          operations: [read, list]
+          visibility: all
+          needsApproval: false
+          auditLogging: false
+        user:
+          operations: [read, list]
+          visibility: all
+          needsApproval: false
+          auditLogging: false
+
+    MERCHANT:
+      resources:
+        corpus:
+          operations: [create, read, update, delete, list]
+          visibility: own
+          needsApproval: false
+          auditLogging: true
+        coupon:
+          operations: [create, read, update, delete, list]
+          visibility: own
+          needsApproval: false
+          auditLogging: true
+        device:
+          operations: [create, read, update, delete, list, bind_qrcode]
+          visibility: own
+          needsApproval: false
+          auditLogging: true
+        promotion:
+          operations: [read, update, list]
+          visibility: own
+          needsApproval: false
+          auditLogging: true
+        ai_config:
+          operations: [read, update]
+          visibility: own
+          needsApproval: false
+          auditLogging: false
+        order:
+          operations: [read, list, refund]
+          visibility: own
+          needsApproval: true
+          auditLogging: true
+        plan:
+          operations: [read, list]
+          visibility: own
+          needsApproval: false
+          auditLogging: false
+
+    USER:
+      resources:
+        coupon:
+          operations: [read, list, claim, use]
+          visibility: own
+          needsApproval: false
+          auditLogging: false
+        order:
+          operations: [read, list]
+          visibility: own
+          needsApproval: false
+          auditLogging: false
+        user:
+          operations: [read, update]
+          visibility: own
+          needsApproval: false
+          auditLogging: false
+        plan:
+          operations: [read, list]
+          visibility: all
+          needsApproval: false
+          auditLogging: false

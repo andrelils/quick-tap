@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.quicktap.mapper.CorpusCategoryMapper">
+
+    <!-- 插入分类 -->
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO corpus_category (name, merchant_id, sort_order, description, corpus_count, enabled, created_at, updated_at)
+        VALUES (#{name}, #{merchantId}, #{sortOrder}, #{description}, 0, #{enabled}, NOW(), NOW())
+    </insert>
+
+    <!-- 按 ID 查询 -->
+    <select id="selectById" resultType="com.quicktap.entity.CorpusCategory">
+        SELECT * FROM corpus_category
+        WHERE id = #{id}
+        AND (merchant_id IS NULL OR merchant_id = #{merchantId} OR #{merchantId} IS NULL)
+    </select>
+
+    <!-- 按商户 ID 查询所有分类（排序） -->
+    <select id="selectByMerchantId" resultType="com.quicktap.entity.CorpusCategory">
+        SELECT * FROM corpus_category
+        WHERE merchant_id = #{merchantId} AND enabled = 1
+        ORDER BY sort_order ASC, created_at DESC
+    </select>
+
+    <!-- 按名称查询（防止重复） -->
+    <select id="selectByName" resultType="com.quicktap.entity.CorpusCategory">
+        SELECT * FROM corpus_category
+        WHERE name = #{name} AND merchant_id = #{merchantId}
+    </select>
+
+    <!-- 更新分类 -->
+    <update id="update">
+        UPDATE corpus_category
+        SET name = #{name},
+            sort_order = #{sortOrder},
+            description = #{description},
+            enabled = #{enabled},
+            updated_at = NOW()
+        WHERE id = #{id} AND merchant_id = #{merchantId}
+    </update>
+
+    <!-- 删除分类（检查是否有关联语料） -->
+    <delete id="deleteById">
+        DELETE FROM corpus_category
+        WHERE id = #{id} AND merchant_id = #{merchantId} AND corpus_count = 0
+    </delete>
+
+    <!-- 增加该分类下的语料计数 -->
+    <update id="incrementCorpusCount">
+        UPDATE corpus_category
+        SET corpus_count = corpus_count + 1
+        WHERE id = #{id}
+    </update>
+
+    <!-- 减少该分类下的语料计数 -->
+    <update id="decrementCorpusCount">
+        UPDATE corpus_category
+        SET corpus_count = corpus_count - 1
+        WHERE id = #{id} AND corpus_count > 0
+    </update>
+
+    <!-- 获取分类总数 -->
+    <select id="countByMerchantId" resultType="int">
+        SELECT COUNT(*) FROM corpus_category WHERE merchant_id = #{merchantId}
+    </select>
+
+</mapper>

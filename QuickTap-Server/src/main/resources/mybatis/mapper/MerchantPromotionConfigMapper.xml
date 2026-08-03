@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.quicktap.mapper.MerchantPromotionConfigMapper">
+
+    <resultMap id="MerchantPromotionConfigResultMap" type="com.quicktap.entity.MerchantPromotionConfig">
+        <id column="id" property="id"/>
+        <result column="merchant_id" property="merchantId"/>
+        <result column="platform_id" property="platformId"/>
+        <result column="params" property="params"/>
+        <result column="custom_name" property="customName"/>
+        <result column="custom_icon" property="customIcon"/>
+        <result column="sort" property="sort"/>
+        <result column="status" property="status"/>
+        <result column="type" property="type"/>
+        <result column="coupon_id" property="couponId"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <select id="selectById" resultMap="MerchantPromotionConfigResultMap">
+        SELECT * FROM merchant_promotion_config WHERE id = #{id}
+    </select>
+
+    <select id="selectByMerchantId" resultMap="MerchantPromotionConfigResultMap">
+        SELECT * FROM merchant_promotion_config WHERE merchant_id = #{merchantId} ORDER BY sort ASC
+    </select>
+
+    <select id="selectByMerchantAndPlatform" resultMap="MerchantPromotionConfigResultMap">
+        SELECT * FROM merchant_promotion_config WHERE merchant_id = #{merchantId} AND platform_id = #{platformId}
+    </select>
+
+    <select id="selectAll" resultMap="MerchantPromotionConfigResultMap">
+        SELECT * FROM merchant_promotion_config ORDER BY created_at DESC
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO merchant_promotion_config (merchant_id, platform_id, params, custom_name, custom_icon, sort, status, type, coupon_id, created_at, updated_at)
+        VALUES (#{merchantId}, #{platformId}, #{params}, #{customName}, #{customIcon}, #{sort}, #{status}, #{type}, #{couponId}, NOW(), NOW())
+    </insert>
+
+    <update id="update">
+        UPDATE merchant_promotion_config SET
+        merchant_id = #{merchantId},
+        platform_id = #{platformId},
+        params = #{params},
+        custom_name = #{customName},
+        custom_icon = #{customIcon},
+        sort = #{sort},
+        status = #{status},
+        type = #{type},
+        coupon_id = #{couponId},
+        updated_at = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM merchant_promotion_config WHERE id = #{id}
+    </delete>
+
+    <select id="countAll" resultType="int">
+        SELECT COUNT(*) FROM merchant_promotion_config
+    </select>
+
+    <!-- 按商户ID和状态查询 -->
+    <select id="selectByMerchantIdAndStatus" resultMap="MerchantPromotionConfigResultMap">
+        SELECT * FROM merchant_promotion_config WHERE merchant_id = #{merchantId} AND status = #{status} ORDER BY sort ASC
+    </select>
+
+    <!-- 按商户ID和平台ID查询 -->
+    <select id="selectByMerchantIdAndPlatformId" resultMap="MerchantPromotionConfigResultMap">
+        SELECT * FROM merchant_promotion_config WHERE merchant_id = #{merchantId} AND platform_id = #{platformId}
+    </select>
+
+    <!-- 按商户ID删除 -->
+    <delete id="deleteByMerchantId">
+        DELETE FROM merchant_promotion_config WHERE merchant_id = #{merchantId}
+    </delete>
+
+    <!-- 按商户ID统计 -->
+    <select id="countByMerchantId" resultType="int">
+        SELECT COUNT(*) FROM merchant_promotion_config WHERE merchant_id = #{merchantId}
+    </select>
+
+</mapper>

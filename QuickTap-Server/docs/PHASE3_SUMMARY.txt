@@ -1,0 +1,168 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                   PHASE 3: CODE QUALITY - IMPLEMENTATION PLAN               ║
+║                          Total: 45 Hours | 3 Tracks                          ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ PHASE 3 OVERVIEW                                                             │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  TRACK 1: Complete 18 TODO Items (20 hours)                                │
+│  ├─ AI Service Integration (8h) - 4 TODOs                                  │
+│  ├─ Statistics Service (8h) - 6 TODOs                                      │
+│  ├─ Controller/Business Logic (2h) - 4 TODOs                               │
+│  └─ Audit/Security (2h) - 2 TODOs                                          │
+│                                                                              │
+│  TRACK 2: Add Comprehensive JavaDoc (15 hours)                             │
+│  ├─ Security Layer JavaDoc (3h)                                            │
+│  ├─ Service Layer JavaDoc (6h)                                             │
+│  ├─ Controller Layer JavaDoc (3h)                                          │
+│  └─ Utility & Entity JavaDoc (3h)                                          │
+│                                                                              │
+│  TRACK 3: Implement Unit Tests (10 hours) - 80%+ Coverage                 │
+│  ├─ Security Tests (3h) - Authentication & Authorization                  │
+│  ├─ Utility Tests (3h) - NullSafeHelper, SensitiveDataSanitizer           │
+│  ├─ Service Tests (2h) - AuthService, AuditLoggingService                 │
+│  └─ Controller Tests (2h) - AuthController, UploadController               │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ TRACK 1: 18 TODO ITEMS BREAKDOWN                                           │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│ CATEGORY A: AI Service Integration (8 hours)                              │
+│ ┌────────────────────────────────────────────────────────────────────────┐ │
+│ │ ✓ TODO 1: Real AI text generation (OpenAI/Claude)           [3h]      │ │
+│ │ ✓ TODO 2: Real image generation (DALL-E/Midjourney)        [2.5h]    │ │
+│ │ ✓ TODO 3: Real video generation (Synthesia/Runway)         [2.5h]    │ │
+│ │ ✓ TODO 4: Filter AI records by merchant & type             [1h]      │ │
+│ └────────────────────────────────────────────────────────────────────────┘ │
+│                                                                              │
+│ CATEGORY B: Statistics Service (8 hours)                                 │
+│ ┌────────────────────────────────────────────────────────────────────────┐ │
+│ │ ✓ TODO 5: Query statistics from database                   [1h]       │ │
+│ │ ✓ TODO 6: Group statistics by date                         [1.5h]     │ │
+│ │ ✓ TODO 7: Query merchant statistics                        [1h]       │ │
+│ │ ✓ TODO 8: Rank merchants by orders/revenue                 [1.5h]     │ │
+│ │ ✓ TODO 9: Query AI generation record counts                [0.5h]     │ │
+│ │ ✓ TODO 10: Group AI stats by type                          [1.5h]     │ │
+│ └────────────────────────────────────────────────────────────────────────┘ │
+│                                                                              │
+│ CATEGORY C: Controller/Business Logic (2 hours)                           │
+│ ┌────────────────────────────────────────────────────────────────────────┐ │
+│ │ ✓ TODO 11: Call AdminService to update roles               [0.5h]     │ │
+│ │ ✓ TODO 12: Fetch all admins from database                  [0.5h]     │ │
+│ │ ✓ TODO 13: Implement quota statistics logic                [0.5h]     │ │
+│ │ ✓ TODO 14: Implement full-text search                      [1h]       │ │
+│ │ ✓ TODO 15: Account lockout on brute force                  [1h]       │ │
+│ │ ✓ TODO 16: Anomalous login additional verification         [1h]       │ │
+│ │ ✓ TODO 17: Implement quota query logic                     [0.5h]     │ │
+│ └────────────────────────────────────────────────────────────────────────┘ │
+│                                                                              │
+│ TOTAL TRACK 1: 20 HOURS                                                   │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ TRACK 2: JAVADOC COVERAGE TARGET                                           │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│ ✓ Security Layer (3h)                                                     │
+│   - JwtTokenProvider      (20+ methods)                                   │
+│   - JwtAuthenticationFilter (10+ methods)                                 │
+│   - SecurityConfig        (15+ beans)                                     │
+│   - CustomUserDetailsService (5+ methods)                                 │
+│                                                                              │
+│ ✓ Service Layer (6h)                                                      │
+│   - AuthService           (10+ methods)                                   │
+│   - AuditLoggingService   (15+ methods)                                   │
+│   - FileUploadValidator   (10+ methods)                                   │
+│   - SensitiveDataSanitizer (20+ methods)                                  │
+│   - NullSafeHelper        (25+ methods)                                   │
+│   - Plus 10+ other critical services                                      │
+│                                                                              │
+│ ✓ Controller Layer (3h)                                                   │
+│   - AuthController        (10+ endpoints)                                 │
+│   - AdminController       (15+ endpoints)                                 │
+│   - UploadController      (5+ endpoints)                                  │
+│   - Plus other controllers                                                │
+│                                                                              │
+│ ✓ Utility & Entity (2h)                                                   │
+│   - PasswordUtil, EncryptUtil, IdUtil                                    │
+│   - Entity classes, DTO classes                                          │
+│   - Constants files                                                       │
+│                                                                              │
+│ TOTAL TRACK 2: 15 HOURS                                                   │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ TRACK 3: UNIT TEST IMPLEMENTATION - 80%+ COVERAGE                         │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│ ✓ Security Tests (3h)                                                     │
+│   - JwtAuthenticationFilterTest      (15 test cases)                      │
+│   - JwtTokenProviderTest             (12 test cases)                      │
+│   - SecurityConfigTest               (8 test cases)                       │
+│                                                                              │
+│ ✓ Utility Tests (3h)                                                      │
+│   - NullSafeHelperTest               (25 test cases)                      │
+│   - SensitiveDataSanitizerTest       (20 test cases)                      │
+│   - FileUploadValidatorTest          (18 test cases)                      │
+│                                                                              │
+│ ✓ Service Tests (2h)                                                      │
+│   - AuthServiceTest                  (12 test cases)                      │
+│   - AuditLoggingServiceTest          (10 test cases)                      │
+│                                                                              │
+│ ✓ Controller Tests (2h)                                                   │
+│   - AuthControllerTest               (15 test cases)                      │
+│   - UploadControllerTest             (10 test cases)                      │
+│                                                                              │
+│ TOTAL TESTS TO WRITE: ~155 test cases                                    │
+│ TARGET COVERAGE: 80%+ across codebase                                    │
+│ TOTAL TRACK 3: 10 HOURS                                                   │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ PHASE 3 MILESTONE TIMELINE                                                 │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│ Week 1                                                                     │
+│ ├─ Days 1-2: AI Service Integration (TODO 1-4)            [8h]           │
+│ ├─ Days 3-5: Statistics Service (TODO 5-10)               [8h]           │
+│ └─ Start: Security Layer JavaDoc                          [3h]           │
+│                                                                              │
+│ Week 2                                                                     │
+│ ├─ Days 1-2: Controller/Business TODOs (TODO 11-14)       [2h]           │
+│ ├─ Days 3-5: Security/Audit TODOs (TODO 15-17)            [2h]           │
+│ ├─ Continue: Service & Controller JavaDoc                [9h]           │
+│ └─ Start: Security Tests                                 [1h]           │
+│                                                                              │
+│ Week 3                                                                     │
+│ ├─ Days 1-2: Complete JavaDoc (Utility/Entity)            [3h]           │
+│ ├─ Days 3-5: Implement remaining tests                    [9h]           │
+│ │  - Utility Tests       (3h)                                            │
+│ │  - Service Tests       (2h)                                            │
+│ │  - Controller Tests    (2h)                                            │
+│ │  - Final reviews       (2h)                                            │
+│ └─ END: Phase 3 Complete - Production Ready! 🚀                          │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════════════════
+                            PHASE 3 READY TO START
+═══════════════════════════════════════════════════════════════════════════════
+
+Status:
+✅ Phase 1 (Security Fixes) - COMPLETED (40h)
+✅ Phase 2 (High Priority Enhancements) - COMPLETED (35h)
+🚀 Phase 3 (Code Quality) - READY TO START (45h)
+
+Document Location: PHASE3_IMPLEMENTATION_PLAN.md
+
+Total Project Progress: ~70h of 120h allocated (58%)
+Remaining: Phase 3 (45h) + Phase 4 (5h contingency buffer)
+
+═══════════════════════════════════════════════════════════════════════════════

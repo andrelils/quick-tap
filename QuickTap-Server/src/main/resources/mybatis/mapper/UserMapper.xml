@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.quicktap.mapper.UserMapper">
+
+    <resultMap id="UserResultMap" type="com.quicktap.entity.User">
+        <id column="id" property="id"/>
+        <result column="username" property="username"/>
+        <result column="password" property="password"/>
+        <result column="openid" property="openid"/>
+        <result column="unionid" property="unionid"/>
+        <result column="nickname" property="nickname"/>
+        <result column="avatar" property="avatar"/>
+        <result column="phone" property="phone"/>
+        <result column="status" property="status"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <select id="selectById" resultMap="UserResultMap">
+        SELECT * FROM user WHERE id = #{id}
+    </select>
+
+    <select id="selectByUsername" resultMap="UserResultMap">
+        SELECT * FROM user WHERE username = #{username}
+    </select>
+
+    <select id="selectByPhone" resultMap="UserResultMap">
+        SELECT * FROM user WHERE phone = #{phone}
+    </select>
+
+    <select id="selectByOpenid" resultMap="UserResultMap">
+        SELECT * FROM user WHERE openid = #{openid}
+    </select>
+
+    <select id="selectByUnionid" resultMap="UserResultMap">
+        SELECT * FROM user WHERE unionid = #{unionid}
+    </select>
+
+    <select id="selectAll" resultMap="UserResultMap">
+        SELECT * FROM user ORDER BY created_at DESC
+    </select>
+
+    <select id="selectPage" resultMap="UserResultMap">
+        SELECT * FROM user ORDER BY created_at DESC LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO user (username, password, openid, unionid, nickname, avatar, phone, status, created_at, updated_at)
+        VALUES (#{username}, #{password}, #{openid}, #{unionid}, #{nickname}, #{avatar}, #{phone}, #{status}, NOW(), NOW())
+    </insert>
+
+    <update id="update">
+        UPDATE user SET
+        username = #{username},
+        password = #{password},
+        openid = #{openid},
+        unionid = #{unionid},
+        nickname = #{nickname},
+        avatar = #{avatar},
+        phone = #{phone},
+        status = #{status},
+        updated_at = NOW()
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM user WHERE id = #{id}
+    </delete>
+
+    <select id="countAll" resultType="long">
+        SELECT COUNT(*) FROM user
+    </select>
+
+    <!-- Statistics Service Methods -->
+
+    <select id="countByMerchantId" resultType="long">
+        SELECT COUNT(*) FROM user WHERE merchant_id = #{merchantId}
+    </select>
+
+    <select id="selectNewUsersGroupedByDate" resultType="map">
+        SELECT DATE(created_at) as date, COUNT(*) as count
+        FROM user
+        WHERE created_at BETWEEN #{startDateTime} AND #{endDateTime}
+        GROUP BY DATE(created_at)
+        ORDER BY date ASC
+    </select>
+
+</mapper>

@@ -1,0 +1,146 @@
+spring:
+  datasource:
+    # 生产环境数据库：127.0.0.1:3306/andre_sql (andre_sql / lls_970401)
+    # 连接数限制 DB_CONNECTION_LIMIT=10，同步到 Hikari 池上限
+    # ⚠️  敏感信息通过环境变量注入，以下为默认值（DB_PASSWORD 必须通过环境变量覆盖）
+    url: jdbc:mysql://${DB_HOST:127.0.0.1}:${DB_PORT:3306}/${DB_NAME:andre_sql}?useUnicode=true&characterEncoding=UTF-8&connectionCollation=utf8mb4_unicode_ci&allowMultiQueries=true&zeroDateTimeBehavior=convertToNull&serverTimezone=GMT%2B8
+    username: ${DB_USER:${DB_USERNAME:andre_sql}}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: ${DB_CONNECTION_LIMIT:10}
+      minimum-idle: ${DB_CONNECTION_MIN_IDLE:3}
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      connection-timeout: 30000
+
+  # Redis配置（生产环境 - 默认开启，推荐独立部署或与应用同机部署）
+  # 连接地址说明：
+  # - Docker Compose 内部 Redis 容器：REDIS_HOST=redis
+  # - 宿主机本地 Redis：REDIS_HOST=127.0.0.1（或 host.docker.internal）
+  # - 独立 Redis 服务器：REDIS_HOST=192.168.x.x
+  # 注意：生产环境 Redis 密码必须通过 REDIS_PASSWORD 环境变量注入；
+  #       建议使用 .env.prod 文件或 systemd / Docker environment 传入，避免明文写入仓库。
+  redis:
+    enabled: ${REDIS_ENABLED:true}
+    host: ${REDIS_HOST:redis}
+    port: ${REDIS_PORT:6379}
+    password: ${REDIS_PASSWORD}
+    database: ${REDIS_DATABASE:0}
+    timeout: ${REDIS_TIMEOUT:3000}
+    connect-timeout: ${REDIS_CONNECT_TIMEOUT:2000}
+    client-type: lettuce
+    lettuce:
+      pool:
+        max-active: ${REDIS_POOL_MAX_ACTIVE:16}
+        max-idle: ${REDIS_POOL_MAX_IDLE:8}
+        min-idle: ${REDIS_POOL_MIN_IDLE:4}
+        max-wait: -1ms
+        time-between-eviction-runs: 60000
+      shutdown-timeout: 200ms
+
+  # Kafka配置（生产环境）
+  kafka:
+    # 内部容器通信使用29092，外部客户端使用9092
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka:29092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all
+      retries: 3
+      compression-type: gzip
+    consumer:
+      group-id: quicktap-consumer-group-prod
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      max-poll-records: 500
+      properties:
+        spring.json.trusted.packages: "*"
+
+# Seata 分布式事务配置（生产环境启用，使用 file 注册模式直连 Seata Server，无需 Nacos）
+# 支付等核心业务通过 @GlobalTransactional 保证跨服务/跨数据源的一致性
+seata:
+  enabled: true
+  application-id: quicktap-server-prod
+  tx-service-group: quicktap_tx_group_prod
+  # 使用 file 注册中心：直连 Seata Server (TC)，无需 Nacos 等注册中心组件
+  registry:
+    type: file
+    file:
+      name: ./file.conf
+  # 使用 file 配置中心：从本地 file.conf 读取 TC 地址
+  config:
+    type: file
+    file:
+      name: ./file.conf
+  service:
+    # 直接指定事务分组到 TC 集群的映射，绕过注册中心
+    vgroup-mapping:
+      quicktap_tx_group_prod: default
+    grouplist:
+      # Seata Server (TC) 地址，通过环境变量 SEATA_SERVER_ADDR 配置
+      # Docker Compose 部署：SEATA_SERVER_ADDR=seata-server:8091
+      # 独立部署：SEATA_SERVER_ADDR=192.168.x.x:8091
+      default: ${SEATA_SERVER_ADDR:seata-server:8091}
+  # AT 模式默认数据源代理（生产环境开启）
+  enable-auto-data-source-proxy: true
+  data-source-proxy-mode: AT
+  # 事务日志存储（TC 端配置，客户端仅作声明）
+  store:
+    mode: db
+  client:
+    rm:
+      report-success-enable: true
+      table-meta-check-enable: false
+    tm:
+      commit-retry-count: 3
+      rollback-retry-count: 3
+
+# JWT配置
+# ⚠️  重要: JWT_SECRET 必须通过环境变量设置！
+jwt:
+  secret: ${JWT_SECRET}
+  expiration: 604800000  # 7天（毫秒）
+  header: Authorization
+  prefix: Bearer
+
+# 权限白名单配置
+auth:
+  whitelist:
+    - /api/health
+    - /api/info
+    - /api/time
+    - /api/admin/auth/login
+    - /api/user/auth/wechat-mini
+    - /api/user/register
+    - /api/user/login
+    - /api/refresh-token
+    - /api/validate-token
+    - /api/logout
+    - /api/csrf-token
+    - /api/promotion/platforms
+    - /api/promotion/platform
+    - /api/device/scan
+    - /doc.html
+    - /webjars
+    - /swagger-ui
+    - /v3/api-docs
+
+# CORS 允许的源（生产环境 - 必须在 .env.prod 中配置）
+# 默认包含生产服务器 IP http://154.8.138.48
+allowed:
+  origins: ${ALLOWED_ORIGINS:http://154.8.138.48,http://154.8.138.48:8080,http://154.8.138.48:8222}
+
+# 加密密钥配置（生产环境 - 必须通过环境变量设置）
+encryption:
+  key: ${ENCRYPTION_KEY}
+
+# 服务器配置
+server:
+  port: 8080
+  compression:
+    enabled: true
+    min-response-size: 1024
+  error:
+    include-message: always
+    include-binding-errors: always

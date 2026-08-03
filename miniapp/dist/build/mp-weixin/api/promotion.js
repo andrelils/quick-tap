@@ -1,0 +1,1 @@
+"use strict";const o=require("../utils/request.js");exports.getPromotionPlatformDetail=t=>o.request.get(`/promotion/platform/${t}`),exports.getPromotionPlatforms=t=>o.request.get("/promotion/platforms",{merchantId:t}),exports.logPromotionClick=t=>o.request.post("/promotion/log",t);
