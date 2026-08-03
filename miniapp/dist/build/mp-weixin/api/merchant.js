@@ -1,1 +1,0 @@
-"use strict";const e=require("../utils/request.js");exports.checkMerchantBind=t=>e.request.get("/merchant/check-bind",t),exports.getMerchantInfo=t=>e.request.get(`/merchant/info/${t}`),exports.getMerchantWifi=t=>e.request.get("/merchant/wifi",{merchantId:t});

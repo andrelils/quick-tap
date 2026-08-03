@@ -1,1 +1,0 @@
-import{fB as t}from"./index-yql0dXsh.js";const a=()=>t.get("/admin/system/settings"),c=s=>t.put("/admin/system/settings",s),m=()=>t.get("/admin/system/admin-merchant-access/list"),r=s=>t.get(`/admin/system/admin-merchant-access/${s}`),i=(s,e)=>t.post(`/admin/system/admin-merchant-access/${s}`,{merchantIds:e});export{m as a,r as b,i as c,a as g,c as u};

@@ -1,1 +1,0 @@
-"use strict";const e=require("../common/vendor.js"),r=e.defineStore("app",()=>{const r=e.ref(null),n=e.ref(null);return{currentMerchant:r,currentDevice:n,setCurrentMerchant:e=>{r.value=e},setCurrentDevice:e=>{n.value=e},clearCurrent:()=>{r.value=null,n.value=null}}});exports.useAppStore=r;

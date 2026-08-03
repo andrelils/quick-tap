@@ -1,1 +1,0 @@
-const r=o=>{if(o===0||o===null||o===void 0)return"0 B";const t=1024,a=["B","KB","MB","GB","TB"],n=Math.floor(Math.log(o)/Math.log(t));return parseFloat((o/Math.pow(t,n)).toFixed(2))+" "+a[n]};export{r as f};

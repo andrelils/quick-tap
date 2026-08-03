@@ -1,1 +1,0 @@
-import{fT as s,r as a,Q as n}from"./index-yql0dXsh.js";const p=s("app",()=>{const t=a(!1),r=a(null),o=n(()=>{var e;return((e=r.value)==null?void 0:e.id)||""});return{collapsed:t,currentMerchant:r,merchantId:o,toggleCollapsed:()=>{t.value=!t.value},setCurrentMerchant:e=>{r.value=e}}});export{p as u};
