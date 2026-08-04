@@ -2,7 +2,7 @@
   <div class="device-list-page">
     <div class="page-header">
       <div class="page-title">设备管理</div>
-      <div class="page-desc">管理所有碰一碰设备，每套设备同时包含二维码和NFC两种类型</div>
+      <div class="page-desc">管理所有晓居智能设备，每套设备同时包含二维码和NFC两种类型</div>
     </div>
 
     <div class="card-wrapper config-card" v-if="deviceConfig.deviceUrl || deviceConfig.qrcodeUrl">

@@ -4,7 +4,7 @@
       <view class="logo-icon">
         <view class="icon-scan" :style="{ width: '80rpx', height: '80rpx' }"></view>
       </view>
-      <text class="app-title">碰一碰好评卡</text>
+      <text class="app-title">晓居智能</text>
       <text class="app-subtitle">智能推广 · 一键好评</text>
       <view class="loading-dots">
         <view class="dot"></view>

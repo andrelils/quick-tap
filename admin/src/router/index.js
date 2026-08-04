@@ -227,7 +227,7 @@ router.beforeEach((to, from, next) => {
 
 router.afterEach((to) => {
   NProgress.done()
-  document.title = to.meta.title ? `${to.meta.title} - 碰一碰好评卡管理系统` : '碰一碰好评卡管理系统'
+  document.title = to.meta.title ? `${to.meta.title} - 晓居智能管理系统` : '晓居智能管理系统'
 })
 
 export default router

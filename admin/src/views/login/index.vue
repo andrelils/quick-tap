@@ -7,7 +7,7 @@
             <div class="brand-logo">
               <LikeOutlined />
             </div>
-            <h1 class="brand-title">碰一碰好评卡</h1>
+            <h1 class="brand-title">晓居智能</h1>
             <p class="brand-desc">NFC智能推广 · 一键好评 · AI创作</p>
           </div>
           <div class="feature-list">

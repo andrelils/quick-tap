@@ -8,7 +8,7 @@
             <u-icon name="thumb-up-fill" color="#fff" size="32"></u-icon>
           </view>
           <view class="logo-text">
-            <text class="title">碰一碰好评卡</text>
+            <text class="title">晓居智能</text>
             <text class="subtitle">NFC智能推广 · 一键好评</text>
           </view>
         </view>

@@ -1,7 +1,7 @@
 {
   "name": "quick-tap-miniapp",
   "version": "1.0.0",
-  "description": "碰一碰好评卡 - C端小程序",
+  "description": "晓居智能 - C端小程序",
   "main": "main.js",
   "scripts": {
     "dev:h5": "uni",

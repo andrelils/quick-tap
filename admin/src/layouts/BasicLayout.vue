@@ -11,7 +11,7 @@
         <div class="logo-icon">
           <LikeOutlined />
         </div>
-        <span v-if="!appStore.collapsed" class="logo-text">碰一碰好评卡</span>
+        <span v-if="!appStore.collapsed" class="logo-text">晓居智能</span>
       </div>
       
       <a-menu
