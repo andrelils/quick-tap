@@ -474,7 +474,7 @@ public class AdminService {
     /**
      * 当前登录管理员修改自己的基础资料
      */
-    public Admin updateInfoBySelf(Integer id, String nickname, String email, String phone) {
+    public Admin updateInfoBySelf(Integer id, String nickname, String avatar, String email, String phone) {
         if (id == null || id <= 0) {
             throw new BusinessException(400, "管理员 ID 不能为空");
         }
@@ -483,6 +483,7 @@ public class AdminService {
             throw new BusinessException(404, "管理员不存在");
         }
         if (nickname != null) admin.setNickname(nickname);
+        if (avatar != null) admin.setAvatar(avatar);
         if (email != null) admin.setEmail(email);
         if (phone != null) admin.setPhone(phone);
         admin.setUpdatedAt(LocalDateTime.now());

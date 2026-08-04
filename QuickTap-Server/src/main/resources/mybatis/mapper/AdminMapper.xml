@@ -8,6 +8,7 @@
         <result column="username" property="username"/>
         <result column="password" property="password"/>
         <result column="nickname" property="nickname"/>
+        <result column="avatar" property="avatar"/>
         <result column="email" property="email"/>
         <result column="phone" property="phone"/>
         <result column="role" property="role"/>
@@ -39,8 +40,8 @@
     </select>
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO admin (username, password, nickname, email, phone, role, merchant_id, status, user_code, created_at, updated_at)
-        VALUES (#{username}, #{password}, #{nickname}, #{email}, #{phone}, #{role}, #{merchantId}, #{status}, #{userCode}, NOW(), NOW())
+        INSERT INTO admin (username, password, nickname, avatar, email, phone, role, merchant_id, status, user_code, created_at, updated_at)
+        VALUES (#{username}, #{password}, #{nickname}, #{avatar}, #{email}, #{phone}, #{role}, #{merchantId}, #{status}, #{userCode}, NOW(), NOW())
     </insert>
 
     <update id="update">
@@ -48,6 +49,7 @@
         username = #{username},
         password = #{password},
         nickname = #{nickname},
+        avatar = #{avatar},
         email = #{email},
         phone = #{phone},
         role = #{role},

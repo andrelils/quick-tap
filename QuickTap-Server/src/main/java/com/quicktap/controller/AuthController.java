@@ -190,6 +190,7 @@ public class AuthController {
                 Admin admin = adminService.getAdminById(userId.intValue());
                 if (admin != null) {
                     info.put("nickname", admin.getNickname());
+                    info.put("avatar", admin.getAvatar());
                     info.put("email", admin.getEmail());
                     info.put("phone", admin.getPhone());
                     info.put("merchantId", admin.getMerchantId());
@@ -293,10 +294,11 @@ public class AuthController {
             return ApiResponse.unauthorized("未登录");
         }
         String nickname = body.get("nickname") != null ? String.valueOf(body.get("nickname")) : null;
+        String avatar = body.get("avatar") != null ? String.valueOf(body.get("avatar")) : null;
         String email = body.get("email") != null ? String.valueOf(body.get("email")) : null;
         String phone = body.get("phone") != null ? String.valueOf(body.get("phone")) : null;
         log.info("管理员修改自己的资料: userId={}", userId);
-        Admin updated = adminService.updateInfoBySelf(userId.intValue(), nickname, email, phone);
+        Admin updated = adminService.updateInfoBySelf(userId.intValue(), nickname, avatar, email, phone);
         updated.setPassword(null);
         return ApiResponse.success("资料修改成功", updated);
     }

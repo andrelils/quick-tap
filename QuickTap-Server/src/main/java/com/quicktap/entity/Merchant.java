@@ -31,5 +31,4 @@ public class Merchant extends BaseEntity {
     private String businessHours;      // 营业时间
     private String shopImages;         // 店铺图片(JSON数组)
     private String referrerCode;       // 推荐人代码
-    private String description;        // 商户描述
 }

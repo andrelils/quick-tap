@@ -94,6 +94,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final int BEARER_PREFIX_LENGTH = BEARER_PREFIX.length();
 
     /**
+     * 静态资源路径不需要 JWT 认证，直接跳过过滤器
+     */
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        return path != null && (path.contains("/uploads/"));
+    }
+
+    /**
      * 从请求头中获取 JWT token
      * Authorization: Bearer <token>
      *

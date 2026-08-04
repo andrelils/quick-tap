@@ -17,6 +17,7 @@ public class Admin extends BaseEntity {
     private String userCode;           // 用户编码(如AD001)
     private String password;           // 密码（bcrypt加密）
     private String nickname;           // 昵称
+    private String avatar;             // 头像URL
     private String email;              // 邮箱
     private String phone;              // 电话
     private String role;               // 角色：super_admin/admin/merchant

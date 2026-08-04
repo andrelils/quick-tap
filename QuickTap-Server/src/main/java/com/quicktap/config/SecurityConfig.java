@@ -149,6 +149,12 @@ public class SecurityConfig {
                 .requestMatchers("/validate-token", "/api/validate-token").permitAll()
                 .requestMatchers("/csrf-token", "/api/csrf-token").permitAll()
 
+                // 静态资源 - 上传文件（图片等）
+                .requestMatchers("/uploads/**", "/api/uploads/**").permitAll()
+
+                // 错误页
+                .requestMatchers("/error").permitAll()
+
                 // Swagger 文档接口
                 .requestMatchers("/doc.html", "/webjars/**", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
                 .requestMatchers("/swagger-ui.html", "/swagger-resources/**").permitAll()

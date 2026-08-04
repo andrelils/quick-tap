@@ -36,6 +36,9 @@ public class UploadController {
     @Value("${file.upload.upload-dir:uploads/}")
     private String uploadDir;
 
+    @Value("${server.servlet.context-path:/api}")
+    private String contextPath;
+
     /**
      * 上传图片
      * 限制: 最大 10MB
@@ -141,8 +144,11 @@ public class UploadController {
             // 保存文件
             Files.write(filePath, file.getBytes());
 
-            // 构建文件 URL
-            String fileUrl = String.format("/%s/%s/%s", uploadDir, subDir, safeFileName);
+            // 构建文件 URL（必须包含 context-path，否则后端无法识别）
+            // 去除 uploadDir 和 contextPath 尾部斜杠，避免双斜杠
+            String cleanContext = contextPath.endsWith("/") ? contextPath.substring(0, contextPath.length() - 1) : contextPath;
+            String cleanUploadDir = uploadDir.endsWith("/") ? uploadDir.substring(0, uploadDir.length() - 1) : uploadDir;
+            String fileUrl = String.format("%s/%s/%s/%s", cleanContext, cleanUploadDir, subDir, safeFileName);
 
             // 返回结果
             Map<String, Object> result = new HashMap<>();

@@ -6,8 +6,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
-
 /**
  * 商户更新请求 DTO
  */
@@ -44,16 +42,6 @@ public class MerchantUpdateRequest {
     private String contactEmail;
 
     /**
-     * 商户地址
-     */
-    private String address;
-
-    /**
-     * 营业时间
-     */
-    private String businessHours;
-
-    /**
      * WiFi 名称
      */
     private String wifiName;
@@ -62,24 +50,4 @@ public class MerchantUpdateRequest {
      * WiFi 密码
      */
     private String wifiPassword;
-
-    /**
-     * 老板微信
-     */
-    private String bossWechat;
-
-    /**
-     * 横幅图片(JSON数组)
-     */
-    private List<String> bannerImages;
-
-    /**
-     * 店铺图片(JSON数组)
-     */
-    private List<String> shopImages;
-
-    /**
-     * 商户描述
-     */
-    private String description;
 }

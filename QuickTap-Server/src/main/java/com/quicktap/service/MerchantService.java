@@ -1,6 +1,5 @@
 package com.quicktap.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.quicktap.constant.Constants;
 import com.quicktap.dto.MerchantCreateRequest;
 import com.quicktap.dto.MerchantUpdateRequest;
@@ -164,37 +163,11 @@ public class MerchantService {
         if (request.getContactEmail() != null) {
             merchant.setContactEmail(request.getContactEmail());
         }
-        if (request.getAddress() != null) {
-            merchant.setAddress(request.getAddress());
-        }
-        if (request.getBusinessHours() != null) {
-            merchant.setBusinessHours(request.getBusinessHours());
-        }
         if (request.getWifiName() != null) {
             merchant.setWifiName(request.getWifiName());
         }
         if (request.getWifiPassword() != null) {
             merchant.setWifiPassword(request.getWifiPassword());
-        }
-        if (request.getBossWechat() != null) {
-            merchant.setBossWechat(request.getBossWechat());
-        }
-        if (request.getBannerImages() != null) {
-            try {
-                merchant.setBannerImages(new ObjectMapper().writeValueAsString(request.getBannerImages()));
-            } catch (Exception e) {
-                merchant.setBannerImages("[]");
-            }
-        }
-        if (request.getShopImages() != null) {
-            try {
-                merchant.setShopImages(new ObjectMapper().writeValueAsString(request.getShopImages()));
-            } catch (Exception e) {
-                merchant.setShopImages("[]");
-            }
-        }
-        if (request.getDescription() != null) {
-            merchant.setDescription(request.getDescription());
         }
 
         merchant.setUpdatedAt(LocalDateTime.now());
