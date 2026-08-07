@@ -22,7 +22,7 @@ spring:
   # 注意：生产环境 Redis 密码必须通过 REDIS_PASSWORD 环境变量注入；
   #       建议使用 .env.prod 文件或 systemd / Docker environment 传入，避免明文写入仓库。
   redis:
-    enabled: ${REDIS_ENABLED:true}
+    enabled: ${REDIS_ENABLED:false}
     host: ${REDIS_HOST:redis}
     port: ${REDIS_PORT:6379}
     password: ${REDIS_PASSWORD}

@@ -143,6 +143,8 @@ public class SecurityConfig {
 
                 // 认证端点（统一 /api 前缀，删除无前缀冗余规则）
                 .requestMatchers("/api/admin/auth/login").permitAll()
+                // 登出需放行：token 过期/失效时用户也能正常登出，否则未认证请求一律 401 导致前端登出必失败
+                .requestMatchers("/api/admin/auth/logout").permitAll()
                 .requestMatchers("/api/user/login").permitAll()
                 .requestMatchers("/api/user/auth/wechat-mini").permitAll()
                 .requestMatchers("/api/user/register", "/api/user/register-bind").permitAll()
