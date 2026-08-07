@@ -7,6 +7,7 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 import java.math.BigDecimal;
 
 /**
@@ -34,15 +35,20 @@ public class PlanCreateRequest {
     @Positive(message = "设备数量限制必须大于0")
     private Integer deviceCount;
 
-    @Positive(message = "文字生成额度必须大于0")
+    @PositiveOrZero(message = "文字生成额度不能为负数")
     private Integer textQuota;
 
-    @Positive(message = "图片生成额度必须大于0")
+    @PositiveOrZero(message = "图片生成额度不能为负数")
     private Integer imageQuota;
 
-    @Positive(message = "视频生成额度必须大于0")
+    @PositiveOrZero(message = "视频生成额度不能为负数")
     private Integer videoQuota;
 
-    @Positive(message = "存储空间限制必须大于0")
+    @PositiveOrZero(message = "存储空间限制不能为负数")
     private Long storageLimit;
+
+    private Integer recommend;      // 是否推荐: 0否/1是
+    private Integer sort;           // 排序
+    private String description;     // 套餐描述
+    private Integer status;         // 状态：1启用/0停用
 }

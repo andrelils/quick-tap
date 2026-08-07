@@ -19,11 +19,12 @@ public interface MerchantMapper {
      * @return 商户列表
      */
     List<Merchant> selectByAuditStatusPage(@Param("auditStatus") Integer auditStatus, @Param("offset") int offset, @Param("limit") int limit);
-    List<Merchant> selectPage(@Param("offset") int offset, @Param("limit") int limit);
+    List<Merchant> selectPage(@Param("offset") int offset, @Param("limit") int limit,
+                              @Param("keyword") String keyword, @Param("status") Integer status);
     int insert(Merchant merchant);
     int update(Merchant merchant);
     int deleteById(@Param("id") Integer id);
-    int countAll();
+    int countAll(@Param("keyword") String keyword, @Param("status") Integer status);
     int countByStatus(@Param("status") Integer status);
     /**
      * 按创建时间倒序查询启用的商户列表

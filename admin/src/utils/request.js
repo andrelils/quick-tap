@@ -8,6 +8,17 @@ const service = axios.create({
   timeout: 30000
 })
 
+// 错误提示去重：同一错误文案 3 秒内只提示一次，避免并发失败刷屏
+let lastErrorMsg = ''
+let lastErrorTime = 0
+const showErrorOnce = (msg) => {
+  const now = Date.now()
+  if (msg === lastErrorMsg && now - lastErrorTime < 3000) return
+  lastErrorMsg = msg
+  lastErrorTime = now
+  message.error(msg)
+}
+
 service.interceptors.request.use(
   (config) => {
     // 静态资源路径（/uploads/**）不需要认证，跳过添加 token
@@ -43,12 +54,12 @@ service.interceptors.response.use(
       // 未认证或token过期
       const userStore = useUserStore()
       userStore.logout()
-      message.error('登录已过期，请重新登录')
+      showErrorOnce('登录已过期，请重新登录')
       router.push('/login')
       return Promise.reject(new Error(res.message || '未授权'))
     } else {
       // 其他错误
-      message.error(res.message || '请求失败')
+      showErrorOnce(res.message || '请求失败')
       return Promise.reject(new Error(res.message || '请求失败'))
     }
   },
@@ -59,11 +70,11 @@ service.interceptors.response.use(
     if (status === 401 || resData?.code === 401) {
       const userStore = useUserStore()
       userStore.logout()
-      message.error(resData?.message || '登录已过期，请重新登录')
+      showErrorOnce(resData?.message || '登录已过期，请重新登录')
       router.push('/login')
       return Promise.reject(new Error(resData?.message || '未授权'))
     }
-    message.error(resData?.message || error.message || '网络错误')
+    showErrorOnce(resData?.message || error.message || '网络错误')
     return Promise.reject(error)
   }
 )

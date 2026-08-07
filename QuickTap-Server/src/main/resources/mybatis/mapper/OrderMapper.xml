@@ -31,12 +31,48 @@
         SELECT * FROM order_record WHERE merchant_id = #{merchantId} ORDER BY created_at DESC LIMIT #{offset}, #{pageSize}
     </select>
 
+    <select id="selectLatestPaidByMerchantId" resultType="map">
+        SELECT id, plan_id, created_at, expire_at
+        FROM order_record
+        WHERE merchant_id = #{merchantId} AND status = 'paid'
+        ORDER BY created_at DESC
+        LIMIT 1
+    </select>
+
+    <select id="selectMerchantOrdersWithPlan" resultType="map">
+        SELECT o.id, o.order_no, o.amount, o.status,
+               COALESCE(p.name, '') AS plan_name,
+               '在线支付' AS pay_type,
+               o.created_at
+        FROM order_record o
+        LEFT JOIN plan p ON o.plan_id = p.id
+        WHERE o.merchant_id = #{merchantId}
+        ORDER BY o.created_at DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
     <select id="selectByStatus" resultMap="OrderResultMap">
         SELECT * FROM order_record WHERE status = #{status} ORDER BY created_at DESC
     </select>
 
     <select id="selectPage" resultMap="OrderResultMap">
         SELECT * FROM order_record ORDER BY created_at DESC LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <select id="selectPageWithNames" resultType="map">
+        SELECT o.id, o.order_no AS orderNo, o.merchant_id AS merchantId,
+               COALESCE(m.name, '') AS merchantName,
+               o.plan_id AS planId,
+               COALESCE(p.name, '') AS planName,
+               o.amount, o.status,
+               '在线支付' AS payType,
+               o.created_at AS createTime,
+               o.created_at AS createdAt
+        FROM order_record o
+        LEFT JOIN merchant m ON o.merchant_id = m.id
+        LEFT JOIN plan p ON o.plan_id = p.id
+        ORDER BY o.created_at DESC
+        LIMIT #{offset}, #{pageSize}
     </select>
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
@@ -70,6 +106,36 @@
 
     <select id="countAll" resultType="long">
         SELECT COUNT(*) FROM order_record
+    </select>
+
+    <!-- 按条件导出订单（带商家名/套餐名） -->
+    <select id="selectForExport" resultType="map">
+        SELECT o.id, o.order_no, o.merchant_id, o.plan_id, o.amount, o.status, o.expire_at, o.created_at,
+               COALESCE(m.name, '') AS merchant_name,
+               COALESCE(p.name, '') AS plan_name,
+               '在线支付' AS pay_type
+        FROM order_record o
+        LEFT JOIN merchant m ON o.merchant_id = m.id
+        LEFT JOIN plan p ON o.plan_id = p.id
+        <where>
+            <if test="orderNo != null and orderNo != ''">
+                AND o.order_no LIKE CONCAT('%', #{orderNo}, '%')
+            </if>
+            <if test="merchantId != null">
+                AND o.merchant_id = #{merchantId}
+            </if>
+            <if test="status != null and status != ''">
+                AND o.status = #{status}
+            </if>
+            <if test="startDate != null and startDate != ''">
+                AND o.created_at &gt;= CONCAT(#{startDate}, ' 00:00:00')
+            </if>
+            <if test="endDate != null and endDate != ''">
+                AND o.created_at &lt;= CONCAT(#{endDate}, ' 23:59:59')
+            </if>
+        </where>
+        ORDER BY o.created_at DESC
+        LIMIT #{limit}
     </select>
 
     <!-- Statistics Service Methods -->

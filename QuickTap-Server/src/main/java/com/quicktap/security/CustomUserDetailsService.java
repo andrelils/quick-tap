@@ -1,7 +1,9 @@
 package com.quicktap.security;
 
 import com.quicktap.entity.Admin;
+import com.quicktap.entity.User;
 import com.quicktap.mapper.AdminMapper;
+import com.quicktap.mapper.UserMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -66,8 +68,12 @@ public class CustomUserDetailsService implements UserDetailsService {
     @Autowired
     private AdminMapper adminMapper;
 
+    @Autowired
+    private UserMapper userMapper;
+
     /**
      * 根据用户名加载用户详情
+     * 优先查 admin 表（后台/商家），未命中再查 user 表（C端用户）
      * @param username 用户名
      * @return UserPrincipal（实现 UserDetails 接口）
      * @throws UsernameNotFoundException 用户不存在
@@ -75,14 +81,19 @@ public class CustomUserDetailsService implements UserDetailsService {
     @Override
     public UserPrincipal loadUserByUsername(String username) throws UsernameNotFoundException {
         Admin admin = adminMapper.selectByUsername(username);
-
-        if (admin == null) {
-            log.warn("用户名不存在: {}", username);
-            throw new UsernameNotFoundException("用户名不存在: " + username);
+        if (admin != null) {
+            log.debug("用户信息已加载(admin): {}", username);
+            return UserPrincipal.create(admin);
         }
 
-        log.debug("用户信息已加载: {}", username);
-        return UserPrincipal.create(admin);
+        User user = userMapper.selectByUsername(username);
+        if (user != null) {
+            log.debug("用户信息已加载(user): {}", username);
+            return UserPrincipal.create(user);
+        }
+
+        log.warn("用户名不存在: {}", username);
+        throw new UsernameNotFoundException("用户名不存在: " + username);
     }
 
     /**
@@ -90,12 +101,16 @@ public class CustomUserDetailsService implements UserDetailsService {
      */
     public UserPrincipal loadUserById(Integer userId) {
         Admin admin = adminMapper.selectById(userId);
-
-        if (admin == null) {
-            log.warn("用户不存在: {}", userId);
-            throw new UsernameNotFoundException("用户不存在: " + userId);
+        if (admin != null) {
+            return UserPrincipal.create(admin);
         }
 
-        return UserPrincipal.create(admin);
+        User user = userMapper.selectById(userId.longValue());
+        if (user != null) {
+            return UserPrincipal.create(user);
+        }
+
+        log.warn("用户不存在: {}", userId);
+        throw new UsernameNotFoundException("用户不存在: " + userId);
     }
 }

@@ -158,6 +158,16 @@
       </view>
     </view>
 
+    <!-- 个人中心入口 -->
+    <view class="mine-entry section" @tap="goToMine">
+      <view class="mine-entry-left">
+        <view class="icon-user-circle" :style="{ width: '40rpx', height: '40rpx' }"></view>
+        <text class="mine-entry-text">个人中心</text>
+      </view>
+      <text class="mine-entry-sub">我的设备 / 推广记录 / 扫描记录</text>
+      <u-icon name="arrow-right" size="18" color="#999"></u-icon>
+    </view>
+
     <view class="bottom-safe"></view>
   </view>
 </template>
@@ -259,8 +269,14 @@ const previewShopImage = (idx) => {
 
 // 点击推广平台跳转
 const handlePromotion = (platform) => {
+  // 后端 /merchant/promotion 返回 configId（merchant_promotion_config.id），兼容旧字段 id
+  const id = platform.configId ?? platform.id
+  if (!id) {
+    uni.showToast({ title: '平台配置异常', icon: 'none' })
+    return
+  }
   uni.navigateTo({
-    url: `/pages/promotion/jump?id=${platform.id}&merchantId=${merchantInfo.value?.id}`
+    url: `/pages/promotion/jump?id=${id}&merchantId=${merchantInfo.value?.id}`
   })
 }
 
@@ -297,6 +313,12 @@ const handleAddWechat = () => {
         showCancel: false
       })
     }
+  })
+}
+
+const goToMine = () => {
+  uni.navigateTo({
+    url: '/pages/user/mine'
   })
 }
 
@@ -431,6 +453,31 @@ const formatDate = (date) => {
   border-radius: $border-radius-lg;
   padding: $spacing-lg $spacing-md;
   box-shadow: $shadow-sm;
+}
+
+.mine-entry {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  padding: $spacing-md;
+}
+
+.mine-entry-left {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+}
+
+.mine-entry-text {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: $text-primary;
+}
+
+.mine-entry-sub {
+  flex: 1;
+  font-size: 24rpx;
+  color: $text-secondary;
 }
 
 .section-header {

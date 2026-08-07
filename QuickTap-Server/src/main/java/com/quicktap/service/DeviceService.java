@@ -48,6 +48,13 @@ public class DeviceService {
     }
 
     /**
+     * 获取设备套数量（按 name + systemCode 去重）
+     */
+    public long countDeviceSets() {
+        return deviceMapper.countSets();
+    }
+
+    /**
      * 获取设备详情
      */
     public Device getDeviceById(Integer id) {

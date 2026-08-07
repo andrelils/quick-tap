@@ -102,9 +102,15 @@ public class PermissionService {
         Permission permission = permissionRepository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Permission not found"));
 
-        permission.setDescription(description);
-        permission.setCategory(category);
-        permission.setStatus(status);
+        if (description != null) {
+            permission.setDescription(description);
+        }
+        if (category != null) {
+            permission.setCategory(category);
+        }
+        if (status != null) {
+            permission.setStatus(status);
+        }
 
         Permission updated = permissionRepository.save(permission);
         log.info("Updated permission: {}", permission.getCode());

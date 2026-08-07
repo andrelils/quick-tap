@@ -127,7 +127,7 @@
             />
           </template>
           <template v-else-if="column.key === 'createdAt'">
-            <span class="create-time">{{ record.createdAt || '-' }}</span>
+            <span class="create-time">{{ formatTime(record.createdAt) }}</span>
           </template>
           <template v-else-if="column.key === 'action'">
             <a-space size="small">
@@ -299,6 +299,15 @@ import { useUserStore } from '@/store/user'
 const appStore = useAppStore()
 const userStore = useUserStore()
 const tableLoading = ref(false)
+
+// 时间格式化：2026-08-02T09:09:24 -> 2026-08-02 09:09:24
+const formatTime = (time) => {
+  if (!time) return '-'
+  const d = new Date(time)
+  if (isNaN(d.getTime())) return time
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+}
 
 const searchForm = reactive({
   keyword: '',

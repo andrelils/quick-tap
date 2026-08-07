@@ -24,4 +24,6 @@ public class Plan extends BaseEntity {
     private Long storageLimit;      // 存储空间限制(MB)
     private Integer recommend;      // 是否推荐: 0否/1是
     private Integer status;         // 状态：1启用/0停用
+    private Integer sort;           // 排序
+    private String description;     // 套餐描述
 }

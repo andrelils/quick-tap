@@ -40,18 +40,17 @@ export const checkPermission = (userId, permission) => {
   })
 }
 
-// 角色是预定义的三个，这里的"创建/更新/删除角色"作为占位，直接返回成功，避免页面报错
+// 角色是预定义的三个 + 数据库中自定义角色
+// 新增/编辑/删除走 /admin/roles 真实 CRUD 接口
 export const createRole = (data) => {
-  console.warn('当前系统角色为预定义枚举（super_admin/admin/merchant），不支持动态创建')
-  return Promise.resolve(data)
+  return request.post('/admin/roles', data)
 }
 
 export const updateRole = (id, data) => {
-  console.warn('当前系统角色为预定义枚举（super_admin/admin/merchant），不支持动态修改')
-  return Promise.resolve({ id, ...data })
+  // 后端按角色标识(code)更新
+  return request.put(`/admin/roles/${id}`, data)
 }
 
 export const deleteRole = (id) => {
-  console.warn('当前系统角色为预定义枚举（super_admin/admin/merchant），不支持动态删除')
-  return Promise.resolve({ id })
+  return request.delete(`/admin/roles/${id}`)
 }

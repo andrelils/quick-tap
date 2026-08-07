@@ -47,8 +47,10 @@ public class ScanLogServiceImpl implements ScanLogService {
 
     @Override
     public List<ScanLogDTO> getUserScanLogs(Long userId) {
-        // 需要在Repository中添加查询方法
-        throw new UnsupportedOperationException("需要在Repository中添加查询方法支持");
+        return scanLogRepository.findByUserIdOrderByCreatedAtDesc(userId)
+                .stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -68,8 +70,8 @@ public class ScanLogServiceImpl implements ScanLogService {
 
     @Override
     public void deleteScanLogsBeforeDate(LocalDateTime beforeDate) {
-        log.info("Deleting scan logs before: {}", beforeDate);
-        // 需要在Repository中添加删除方法
+        scanLogRepository.deleteByCreatedAtBefore(beforeDate);
+        log.info("Deleted scan logs before: {}", beforeDate);
     }
 
     private ScanLogDTO convertToDTO(ScanLog scanLog) {

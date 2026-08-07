@@ -22,4 +22,5 @@ public interface DeviceMapper {
     int deleteByMerchantId(@Param("merchantId") Integer merchantId);
     long countByMerchantId(@Param("merchantId") Integer merchantId);
     long countAll();
+    long countSets();
 }

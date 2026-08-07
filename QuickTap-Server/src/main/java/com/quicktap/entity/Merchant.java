@@ -26,9 +26,13 @@ public class Merchant extends BaseEntity {
     private Integer planId;            // 套餐ID
     private Long storageUsed;          // 已使用存储(MB)
     private Long storageLimit;         // 存储限制(MB)
+    private Long textQuotaLimit;       // 文字生成额度覆盖（NULL 使用套餐默认）
+    private Long imageQuotaLimit;      // 图片生成额度覆盖（NULL 使用套餐默认）
+    private Long videoQuotaLimit;      // 视频生成额度覆盖（NULL 使用套餐默认）
     private String bannerImages;       // 横幅图片(JSON数组)
     private String bossWechat;         // 老板微信
     private String businessHours;      // 营业时间
     private String shopImages;         // 店铺图片(JSON数组)
     private String referrerCode;       // 推荐人代码
+    private String description;        // 商家简介
 }

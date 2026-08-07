@@ -145,6 +145,22 @@ public class AdminService {
 
     private final AdminMapper adminMapper;
     private final MerchantMapper merchantMapper;
+    private final RoleService roleService;
+
+    /**
+     * 角色合法性校验：内置角色或自定义角色表中已存在的角色
+     */
+    private boolean isValidRole(String role) {
+        if (role == null || role.trim().isEmpty()) {
+            return false;
+        }
+        if (Constants.ROLE_SUPER_ADMIN.equals(role)
+                || Constants.ROLE_ADMIN.equals(role)
+                || Constants.ROLE_MERCHANT.equals(role)) {
+            return true;
+        }
+        return roleService.exists(role);
+    }
 
     /**
      * 获取所有管理员（不分页）
@@ -274,6 +290,10 @@ public class AdminService {
         if (request.getRole() == null || request.getRole().trim().isEmpty()) {
             throw new BusinessException(ErrorCode.INVALID_REQUEST, "角色不能为空");
         }
+        if (request.getPhone() != null && !request.getPhone().isEmpty()
+                && !request.getPhone().matches("^1[3-9]\\d{9}$")) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "手机号格式不正确，请输入正确的11位手机号");
+        }
 
         // 检查用户名是否已存在
         Admin existingAdmin = adminMapper.selectByUsername(request.getUsername());
@@ -283,9 +303,7 @@ public class AdminService {
 
         // 验证角色
         String role = request.getRole();
-        if (!role.equals(Constants.ROLE_SUPER_ADMIN) &&
-            !role.equals(Constants.ROLE_ADMIN) &&
-            !role.equals(Constants.ROLE_MERCHANT)) {
+        if (!isValidRole(role)) {
             throw new BusinessException(ErrorCode.INVALID_REQUEST, "角色不合法");
         }
 
@@ -336,9 +354,7 @@ public class AdminService {
         // 更新角色
         if (request.getRole() != null && !request.getRole().isEmpty()) {
             String role = request.getRole();
-            if (!role.equals(Constants.ROLE_SUPER_ADMIN) &&
-                !role.equals(Constants.ROLE_ADMIN) &&
-                !role.equals(Constants.ROLE_MERCHANT)) {
+            if (!isValidRole(role)) {
                 throw new BusinessException(ErrorCode.INVALID_REQUEST, "角色不合法");
             }
             admin.setRole(role);
@@ -379,6 +395,9 @@ public class AdminService {
 
         // 更新电话
         if (request.getPhone() != null) {
+            if (!request.getPhone().isEmpty() && !request.getPhone().matches("^1[3-9]\\d{9}$")) {
+                throw new BusinessException(ErrorCode.INVALID_REQUEST, "手机号格式不正确，请输入正确的11位手机号");
+            }
             admin.setPhone(request.getPhone());
         }
 
@@ -558,7 +577,12 @@ public class AdminService {
         }
         if (nickname != null) admin.setNickname(nickname);
         if (email != null) admin.setEmail(email);
-        if (phone != null) admin.setPhone(phone);
+        if (phone != null) {
+            if (!phone.isEmpty() && !phone.matches("^1[3-9]\\d{9}$")) {
+                throw new BusinessException(ErrorCode.INVALID_REQUEST, "手机号格式不正确，请输入正确的11位手机号");
+            }
+            admin.setPhone(phone);
+        }
         if (avatar != null) admin.setAvatar(avatar);
         admin.setUpdatedAt(LocalDateTime.now());
         int result = adminMapper.update(admin);

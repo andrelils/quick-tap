@@ -71,6 +71,15 @@ public class OwnershipChecker {
     }
 
     /**
+     * 判断当前登录用户是否为 MERCHANT 角色
+     *
+     * @return true 表示当前用户是商户
+     */
+    public boolean isCurrentMerchant() {
+        return securityUtil.isMerchant();
+    }
+
+    /**
      * 获取当前登录用户 ID
      * 仅适用于 USER 角色用户
      *

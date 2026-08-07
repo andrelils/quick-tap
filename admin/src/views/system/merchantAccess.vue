@@ -31,7 +31,7 @@
               <div class="admin-username">@{{ admin.username }}</div>
             </div>
             <div class="admin-merchant-count">
-              {{ admin.merchantAccess?.length || 0 }} 商家
+              {{ admin.merchantCount ?? admin.merchantAccess?.length ?? 0 }} 商家
             </div>
           </div>
           <div v-if="adminList.length === 0" class="empty-tip">
@@ -184,7 +184,12 @@ const loadAdminList = async () => {
   loading.value = true
   try {
     const res = await getAdminMerchantAccessList()
-    adminList.value = res || []
+    // 后端字段为 adminId/merchantIds，前端统一映射为 id/merchantCount
+    adminList.value = (res || []).map(a => ({
+      ...a,
+      id: a.adminId,
+      merchantCount: (a.merchantIds || []).length
+    }))
   } catch (e) {
     console.error('加载管理员列表失败', e)
   } finally {
@@ -245,9 +250,11 @@ const handleSave = async () => {
     message.success('保存成功')
     const admin = adminList.value.find(a => a.id === selectedAdminId.value)
     if (admin) {
-      admin.merchantAccess = merchantList.value
+      const access = merchantList.value
         .filter(m => selectedMerchantIds.value.includes(m.id))
         .map(m => ({ id: m.id, name: m.name }))
+      admin.merchantAccess = access
+      admin.merchantCount = access.length
     }
   } catch (e) {
     console.error('保存失败', e)

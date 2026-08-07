@@ -219,7 +219,7 @@ public class StatisticsService {
         Map<String, Object> overview = new HashMap<>();
 
         try {
-            long totalMerchants = merchantMapper.countAll();
+            long totalMerchants = merchantMapper.countAll(null, null);
             long totalUsers = userMapper.countAll();
             long totalOrders = orderMapper.countAll();
             Double totalRevenue = orderMapper.sumTotalAmount();
@@ -428,37 +428,47 @@ public class StatisticsService {
 
             long totalCount = textCount + imageCount + videoCount;
 
-            // 文本统计
-            Map<String, Object> textStats = new HashMap<>();
-            textStats.put("count", textCount);
-            textStats.put("percentage", totalCount > 0 ? (textCount * 100.0 / totalCount) : 0);
-
-            // 图片统计
-            Map<String, Object> imageStats = new HashMap<>();
-            imageStats.put("count", imageCount);
-            imageStats.put("percentage", totalCount > 0 ? (imageCount * 100.0 / totalCount) : 0);
-
-            // 视频统计
-            Map<String, Object> videoStats = new HashMap<>();
-            videoStats.put("count", videoCount);
-            videoStats.put("percentage", totalCount > 0 ? (videoCount * 100.0 / totalCount) : 0);
-
+            // 各类型今日/本周/本月统计
             result.put("total", totalCount);
-            result.put("text", textStats);
-            result.put("image", imageStats);
-            result.put("video", videoStats);
+            result.put("text", buildTypeStats("text", textCount, totalCount));
+            result.put("image", buildTypeStats("image", imageCount, totalCount));
+            result.put("video", buildTypeStats("video", videoCount, totalCount));
 
             log.info("🎨 AI生成统计: 文本={}, 图片={}, 视频={}, 总计={}",
                 textCount, imageCount, videoCount, totalCount);
         } catch (Exception e) {
             log.error("❌ 获取AI生成类型统计失败: {}", e.getMessage(), e);
             result.put("total", 0);
-            result.put("text", Map.of("count", 0, "percentage", 0));
-            result.put("image", Map.of("count", 0, "percentage", 0));
-            result.put("video", Map.of("count", 0, "percentage", 0));
+            result.put("text", Map.of("count", 0, "percentage", 0, "today", 0, "week", 0, "month", 0));
+            result.put("image", Map.of("count", 0, "percentage", 0, "today", 0, "week", 0, "month", 0));
+            result.put("video", Map.of("count", 0, "percentage", 0, "today", 0, "week", 0, "month", 0));
         }
 
         return result;
+    }
+
+    /**
+     * 构造单类型统计（总数/占比/今日/本周/本月）
+     */
+    private Map<String, Object> buildTypeStats(String type, long count, long totalCount) {
+        LocalDate today = LocalDate.now();
+        LocalDate weekStart = today.minusDays(today.getDayOfWeek().getValue() - 1L);
+        LocalDate monthStart = today.withDayOfMonth(1);
+
+        long todayCount = aiGenerateRecordMapper.countByTypeAndStatusBetween(type, 1,
+                today.atStartOfDay(), today.atTime(23, 59, 59));
+        long weekCount = aiGenerateRecordMapper.countByTypeAndStatusBetween(type, 1,
+                weekStart.atStartOfDay(), today.atTime(23, 59, 59));
+        long monthCount = aiGenerateRecordMapper.countByTypeAndStatusBetween(type, 1,
+                monthStart.atStartOfDay(), today.atTime(23, 59, 59));
+
+        Map<String, Object> stats = new HashMap<>();
+        stats.put("count", count);
+        stats.put("percentage", totalCount > 0 ? (count * 100.0 / totalCount) : 0);
+        stats.put("today", todayCount);
+        stats.put("week", weekCount);
+        stats.put("month", monthCount);
+        return stats;
     }
 
     /**

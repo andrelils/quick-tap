@@ -16,6 +16,8 @@
         <result column="storage_limit" property="storageLimit"/>
         <result column="recommend" property="recommend"/>
         <result column="status" property="status"/>
+        <result column="sort" property="sort"/>
+        <result column="description" property="description"/>
         <result column="created_at" property="createdAt"/>
         <result column="updated_at" property="updatedAt"/>
     </resultMap>
@@ -45,8 +47,8 @@
     </select>
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO plan (name, level, price, duration_months, device_count, text_quota, image_quota, video_quota, storage_limit, recommend, status, created_at, updated_at)
-        VALUES (#{name}, #{level}, #{price}, #{durationMonths}, #{deviceCount}, #{textQuota}, #{imageQuota}, #{videoQuota}, #{storageLimit}, #{recommend}, #{status}, NOW(), NOW())
+        INSERT INTO plan (name, level, price, duration_months, device_count, text_quota, image_quota, video_quota, storage_limit, recommend, status, sort, description, created_at, updated_at)
+        VALUES (#{name}, #{level}, #{price}, #{durationMonths}, #{deviceCount}, #{textQuota}, #{imageQuota}, #{videoQuota}, #{storageLimit}, #{recommend}, #{status}, #{sort}, #{description}, NOW(), NOW())
     </insert>
 
     <update id="update">
@@ -62,6 +64,8 @@
         storage_limit = #{storageLimit},
         recommend = #{recommend},
         status = #{status},
+        sort = #{sort},
+        description = #{description},
         updated_at = NOW()
         WHERE id = #{id}
     </update>

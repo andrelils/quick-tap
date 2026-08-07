@@ -2,19 +2,16 @@ package com.quicktap.dto;
 
 import lombok.Data;
 
-import jakarta.validation.constraints.NotBlank; /**
+/**
  * 创建或更新 AI 配置请求
  */
 @Data
 public class CreateOrUpdateAiConfigRequest {
 
-    @NotBlank(message = "文本生成模型不能为空")
     private String textModel;
 
-    @NotBlank(message = "图片生成模型不能为空")
     private String imageModel;
 
-    @NotBlank(message = "视频生成模型不能为空")
     private String videoModel;
 
     private String apiKey;
@@ -22,4 +19,19 @@ public class CreateOrUpdateAiConfigRequest {
     private String apiSecret;
 
     private Boolean enabled = true;
+
+    /**
+     * 文本生成提示词
+     */
+    private String textPrompt;
+
+    /**
+     * 图片生成提示词
+     */
+    private String imagePrompt;
+
+    /**
+     * 视频生成提示词
+     */
+    private String videoPrompt;
 }

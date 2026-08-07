@@ -23,6 +23,7 @@ import java.util.*;
 public class AiGenerateService {
 
     private final AiGenerateRecordMapper aiGenerateRecordMapper;
+    private final MerchantQuotaService merchantQuotaService;
 
     @Autowired(required = false)
     private OpenAiClient openAiClient;
@@ -38,6 +39,10 @@ public class AiGenerateService {
     public AiGenerateRecord generateText(Integer merchantId, String prompt) {
         if (prompt == null || prompt.trim().isEmpty()) {
             throw new BusinessException(ErrorCode.INVALID_REQUEST, "提示词不能为空");
+        }
+        String quotaMsg = merchantQuotaService.validateTextQuota(merchantId);
+        if (quotaMsg != null) {
+            throw new BusinessException(ErrorCode.QUOTA_EXCEEDED, quotaMsg);
         }
 
         // 创建生成记录
@@ -90,6 +95,10 @@ public class AiGenerateService {
         if (prompt == null || prompt.trim().isEmpty()) {
             throw new BusinessException(ErrorCode.INVALID_REQUEST, "提示词不能为空");
         }
+        String quotaMsg = merchantQuotaService.validateImageQuota(merchantId);
+        if (quotaMsg != null) {
+            throw new BusinessException(ErrorCode.QUOTA_EXCEEDED, quotaMsg);
+        }
 
         AiGenerateRecord record = new AiGenerateRecord();
         record.setRecordId(UUID.randomUUID().toString());
@@ -135,6 +144,10 @@ public class AiGenerateService {
     public AiGenerateRecord generateVideo(Integer merchantId, String prompt) {
         if (prompt == null || prompt.trim().isEmpty()) {
             throw new BusinessException(ErrorCode.INVALID_REQUEST, "提示词不能为空");
+        }
+        String quotaMsg = merchantQuotaService.validateVideoQuota(merchantId);
+        if (quotaMsg != null) {
+            throw new BusinessException(ErrorCode.QUOTA_EXCEEDED, quotaMsg);
         }
 
         AiGenerateRecord record = new AiGenerateRecord();

@@ -94,8 +94,8 @@
             </div>
             <span v-else class="storage-text">--</span>
           </template>
-          <template v-else-if="column.key === 'created_at'">
-            {{ record.created_at ? dayjs(record.created_at).format('YYYY-MM-DD HH:mm:ss') : '--' }}
+          <template v-else-if="column.key === 'createdAt'">
+            {{ record.createdAt ? dayjs(record.createdAt).format('YYYY-MM-DD HH:mm:ss') : '--' }}
           </template>
           <template v-else-if="column.key === 'status'">
             <a-badge 
@@ -290,13 +290,13 @@ const pagination = reactive({
 const columns = [
   { title: 'Logo', dataIndex: 'logo', key: 'logo', width: 80 },
   { title: '商家名称', dataIndex: 'name', key: 'name', width: 160 },
-  { title: '联系人', dataIndex: 'contact_name', key: 'contact_name', width: 100 },
-  { title: '联系电话', dataIndex: 'contact_phone', key: 'contact_phone', width: 130 },
+  { title: '联系人', dataIndex: 'contactName', key: 'contactName', width: 100 },
+  { title: '联系电话', dataIndex: 'contactPhone', key: 'contactPhone', width: 130 },
   { title: '地址', dataIndex: 'address', key: 'address', width: 200, ellipsis: true },
-  { title: '推荐人', key: 'referrer', width: 160, customRender: ({ record }) => record.referrer_username ? `${record.referrer_username}(${record.referrer_code})` : '--' },
+  { title: '推荐人', key: 'referrer', width: 160, customRender: ({ record }) => record.referrerCode ? record.referrerCode : '--' },
   { title: '状态', dataIndex: 'status', key: 'status', width: 100 },
   { title: '存储空间', dataIndex: 'storage', key: 'storage', width: 140 },
-  { title: '创建时间', dataIndex: 'created_at', key: 'created_at', width: 170 },
+  { title: '创建时间', dataIndex: 'createdAt', key: 'createdAt', width: 170 },
   { title: '操作', dataIndex: 'action', key: 'action', width: 240, fixed: 'right' }
 ]
 
@@ -327,15 +327,22 @@ const formData = reactive({
 })
 
 const formRules = {
-  name: [{ required: true, message: '请输入商家名称', trigger: 'blur' }]
+  name: [{ required: true, message: '请输入商家名称', trigger: 'blur' }],
+  contactPhone: [
+    { required: true, message: '请输入联系电话', trigger: 'blur' },
+    { pattern: /^1[3-9]\d{9}$/, message: '手机号格式不正确，请输入正确的11位手机号', trigger: 'blur' }
+  ]
 }
 
 const fileList = ref([])
 const bannerFileList = ref([])
 const shopFileList = ref([])
-const uploadAction = import.meta.env.VITE_API_BASE_URL
-  ? `${import.meta.env.VITE_API_BASE_URL}/admin/upload/image`
-  : '/api/admin/upload/image'
+// 上传地址：编辑已有商家时带上 merchantId，后端据此校验并累计存储额度
+const uploadAction = computed(() => {
+  const base = import.meta.env.VITE_API_BASE_URL
+  const action = base ? `${base}/admin/upload/image` : '/api/admin/upload/image'
+  return formData.id ? `${action}?merchantId=${formData.id}` : action
+})
 
 const uploadHeaders = (() => {
   const token = localStorage.getItem('token')
@@ -465,14 +472,15 @@ const loadData = async () => {
     const listWithStorage = await Promise.all(list.map(async (item) => {
       try {
         const storageRes = await getMerchantStorage(item.id)
-        const storageData = storageRes || {}
-        const used = storageData.usedMB || 0
-        const total = storageData.limitMB || 0
+        const storageData = storageRes?.storage || storageRes || {}
+        const used = storageData.used || 0
+        const total = storageData.limit || storageData.limitMB || 0
+        const unlimited = storageData.unlimited === true || !total
         const percent = total > 0 ? Math.round((used / total) * 100) : 0
         item.storageInfo = {
-          used: total > 0 ? `${used}MB` : `${used}MB`,
-          total: total > 0 ? `${total}MB` : '不限',
-          percent: total > 0 ? percent : 0
+          used: `${used}MB`,
+          total: unlimited ? '不限' : `${total}MB`,
+          percent: unlimited ? 0 : percent
         }
       } catch (e) {
         item.storageInfo = null
@@ -562,19 +570,19 @@ const handleDetail = (record) => {
 const handleEdit = (record) => {
   isEdit.value = true
   modalTitle.value = '编辑商家'
-  const banners = parseImages(record.banner_images)
-  const shops = parseImages(record.shop_images)
+  const banners = parseImages(record.bannerImages)
+  const shops = parseImages(record.shopImages)
   Object.assign(formData, {
     id: record.id,
     name: record.name,
     logo: record.logo,
     bannerImages: banners,
-    contactName: record.contact_name,
-    contactPhone: record.contact_phone,
-    bossWechat: record.boss_wechat || '',
+    contactName: record.contactName,
+    contactPhone: record.contactPhone,
+    bossWechat: record.bossWechat || '',
     address: record.address,
-    businessHours: record.business_hours || '',
-    referrerCode: record.referrer_code || '',
+    businessHours: record.businessHours || '',
+    referrerCode: record.referrerCode || '',
     description: record.description,
     shopImages: shops,
     status: record.status
@@ -644,7 +652,7 @@ const handleDelete = async (record) => {
         h('div', { style: 'font-weight: 600; margin-bottom: 8px' }, '商家名称'),
         h('div', { style: 'margin-bottom: 12px' }, record.name),
         h('div', { style: 'font-weight: 600; margin-bottom: 8px' }, '联系电话'),
-        h('div', record.contact_phone || '--')
+        h('div', record.contactPhone || '--')
       ])
     ]),
     okText: '确定删除',
@@ -790,7 +798,7 @@ const handleSubmit = async () => {
     const payload = {
       name: formData.name,
       logo: formData.logo,
-      bannerImages: formData.bannerImages || [],
+      bannerImages: JSON.stringify(formData.bannerImages || []),
       contactName: formData.contactName,
       contactPhone: formData.contactPhone,
       bossWechat: formData.bossWechat || '',
@@ -798,7 +806,7 @@ const handleSubmit = async () => {
       businessHours: formData.businessHours || '',
       referrerCode: formData.referrerCode || '',
       description: formData.description,
-      shopImages: formData.shopImages || [],
+      shopImages: JSON.stringify(formData.shopImages || []),
       status: formData.status
     }
 
@@ -812,6 +820,8 @@ const handleSubmit = async () => {
 
     modalVisible.value = false
     loadData()
+    // 通知顶部"切换商家视图"下拉刷新商家列表
+    window.dispatchEvent(new CustomEvent('merchant-changed'))
   } catch (e) {
     console.error('表单提交失败', e)
     if (e.response?.status === 422 || e.response?.data?.validationErrors) {

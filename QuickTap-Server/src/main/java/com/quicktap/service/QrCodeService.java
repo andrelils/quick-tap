@@ -151,9 +151,10 @@ public class QrCodeService {
     /**
      * 查询商户的二维码列表
      */
-    @Cacheable(value = "qr_codes_merchant", key = "#merchantId", unless = "#result == null")
+    @Cacheable(value = "qr_codes_merchant", key = "#merchantId != null ? #merchantId : 'all'", unless = "#result == null")
     public List<QrCodeDTO> listByMerchantId(Long merchantId) {
-        List<QrCode> qrCodes = qrCodeMapper.selectByMerchantId(merchantId);
+        // merchantId 为空（超管查看全部）时用 selectAll，避免 WHERE merchant_id = NULL 查不到
+        List<QrCode> qrCodes = (merchantId != null) ? qrCodeMapper.selectByMerchantId(merchantId) : qrCodeMapper.selectAll();
         return qrCodes.stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());

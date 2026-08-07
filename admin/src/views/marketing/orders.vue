@@ -181,7 +181,7 @@ import {
   ReloadOutlined,
   DownloadOutlined
 } from '@ant-design/icons-vue'
-import { getOrderList, refundOrder } from '@/api/marketing'
+import { getOrderList, refundOrder, exportOrders } from '@/api/marketing'
 import { getMerchantList } from '@/api/merchant'
 import { useAppStore } from '@/store/app'
 import { useUserStore } from '@/store/user'
@@ -303,8 +303,60 @@ const handlePageChange = () => {
   loadData()
 }
 
-const handleExport = () => {
-  message.success('导出成功')
+const buildQueryParams = () => {
+  const params = {}
+  if (searchForm.orderNo) params.orderNo = searchForm.orderNo
+  const globalMerchantId = userStore.isAdmin ? appStore.merchantId : ''
+  if (globalMerchantId) {
+    params.merchantId = globalMerchantId
+  } else if (searchForm.merchantId !== undefined) {
+    params.merchantId = searchForm.merchantId
+  }
+  if (searchForm.status !== undefined) params.status = searchForm.status
+  if (searchForm.dateRange && searchForm.dateRange.length === 2) {
+    params.startDate = searchForm.dateRange[0]
+    params.endDate = searchForm.dateRange[1]
+  }
+  return params
+}
+
+const handleExport = async () => {
+  try {
+    const list = await exportOrders(buildQueryParams())
+    const rows = Array.isArray(list) ? list : []
+    if (rows.length === 0) {
+      message.warning('没有可导出的订单')
+      return
+    }
+    // 生成 CSV 并触发下载
+    const statusMap = { pending: '待支付', paid: '已支付', refunded: '已退款', cancelled: '已取消' }
+    const payTypeMap = { online: '在线支付', wechat: '微信支付', alipay: '支付宝' }
+    const header = ['订单号', '商家名称', '套餐名称', '金额', '支付方式', '状态', '下单时间']
+    const lines = rows.map(r => [
+      r.order_no || r.orderNo || '',
+      r.merchant_name || '',
+      r.plan_name || '',
+      r.amount ?? '',
+      payTypeMap[r.pay_type || r.payType] || r.pay_type || r.payType || '在线支付',
+      statusMap[r.status] || r.status || '',
+      r.created_at || ''
+    ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
+    const csv = '\uFEFF' + [header.join(','), ...lines].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    const now = new Date()
+    const stamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
+    a.href = url
+    a.download = `订单导出_${stamp}.csv`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    message.success(`已导出 ${rows.length} 条订单`)
+  } catch (e) {
+    console.error('导出失败', e)
+  }
 }
 
 const handleDetail = (record) => {

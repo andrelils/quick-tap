@@ -27,16 +27,16 @@
           <view class="coupon-left">
             <text class="coupon-value">
               <text class="currency">¥</text>
-              {{ coupon.discountValue }}
+              {{ coupon.amount ?? coupon.value ?? coupon.discountValue ?? 0 }}
             </text>
-            <text class="coupon-condition" v-if="coupon.minAmount > 0">满{{ coupon.minAmount }}可用</text>
+            <text class="coupon-condition" v-if="(coupon.minAmount ?? 0) > 0">满{{ coupon.minAmount }}可用</text>
             <text class="coupon-condition" v-else>无门槛</text>
           </view>
           <view class="coupon-right">
-            <text class="coupon-name">{{ coupon.couponName }}</text>
+            <text class="coupon-name">{{ coupon.title ?? coupon.name ?? coupon.couponName }}</text>
             <text class="coupon-desc">{{ coupon.description || '欢迎使用' }}</text>
             <text class="coupon-valid">
-              有效期至 {{ formatDate(coupon.validEndTime) }}
+              有效期至 {{ formatDate(coupon.endTime ?? coupon.validEndTime) }}
             </text>
             <view class="coupon-footer">
               <text class="coupon-count">剩余 {{ coupon.totalCount - coupon.issuedCount }} 张</text>
@@ -121,8 +121,9 @@ const merchantId = ref(null)
 onLoad((options) => {
   if (options.merchantId) {
     merchantId.value = options.merchantId
-    loadAvailableCoupons()
   }
+  // 无 merchantId 时也加载全量可领取券（后端不过滤）
+  loadAvailableCoupons()
 })
 
 onShow(() => {
@@ -133,7 +134,7 @@ onShow(() => {
 })
 
 const goToLogin = () => {
-  uni.switchTab({ url: '/pages/user/mine' })
+  uni.navigateTo({ url: '/pages/user/mine' })
 }
 
 const loadAvailableCoupons = async () => {
@@ -176,12 +177,12 @@ const handleClaim = (coupon) => {
 
 const getCouponValue = (couponId) => {
   const coupon = availableCoupons.value.find(c => c.id === couponId)
-  return coupon?.discountValue || 0
+  return coupon?.amount ?? coupon?.value ?? coupon?.discountValue ?? 0
 }
 
 const getCouponName = (couponId) => {
   const coupon = availableCoupons.value.find(c => c.id === couponId)
-  return coupon?.couponName || '优惠券'
+  return coupon?.title ?? coupon?.name ?? coupon?.couponName ?? '优惠券'
 }
 
 const formatDate = (date) => {

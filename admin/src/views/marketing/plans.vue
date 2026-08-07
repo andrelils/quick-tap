@@ -209,12 +209,12 @@
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="有效期(天)" name="duration">
+            <a-form-item label="有效期(月)" name="duration">
               <a-input-number 
                 v-model:value="formData.duration" 
                 :min="1"
                 style="width: 100%"
-                placeholder="请输入有效期天数"
+                placeholder="请输入有效期(月)"
               />
             </a-form-item>
           </a-col>
@@ -234,6 +234,18 @@
             <a-form-item label="图片生成额度" name="imageQuota">
               <a-input-number 
                 v-model:value="formData.imageQuota" 
+                :min="0"
+                style="width: 100%"
+                placeholder="0 表示不限"
+              />
+            </a-form-item>
+          </a-col>
+        </a-row>
+        <a-row :gutter="16">
+          <a-col :span="12">
+            <a-form-item label="视频生成额度" name="videoQuota">
+              <a-input-number 
+                v-model:value="formData.videoQuota" 
                 :min="0"
                 style="width: 100%"
                 placeholder="0 表示不限"
@@ -340,6 +352,7 @@ const columns = [
   { title: '有效期', dataIndex: 'durationMonths', key: 'duration', width: 100 },
   { title: '文字额度', dataIndex: 'textQuota', key: 'textQuota', width: 120 },
   { title: '图片额度', dataIndex: 'imageQuota', key: 'imageQuota', width: 120 },
+  { title: '视频额度', dataIndex: 'videoQuota', key: 'videoQuota', width: 120 },
   { title: '设备限制', dataIndex: 'deviceCount', key: 'deviceCount', width: 110 },
   { title: '存储空间', dataIndex: 'storageLimit', key: 'storageLimit', width: 110 },
   { title: '购买人数', dataIndex: 'buyCount', key: 'buyCount', width: 110 },
@@ -362,6 +375,7 @@ const formData = reactive({
   duration: 30,
   textQuota: 0,
   imageQuota: 0,
+  videoQuota: 0,
   deviceLimit: 1,
   storageLimit: 0,
   sort: 0,
@@ -425,6 +439,7 @@ const handleAdd = () => {
     duration: 30,
     textQuota: 0,
     imageQuota: 0,
+    videoQuota: 0,
     deviceLimit: 1,
     storageLimit: 0,
     sort: 0,
@@ -443,11 +458,12 @@ const handleEdit = (record) => {
     name: record.name,
     level: record.level || 'basic',
     price: record.price,
-    duration: record.duration || record.duration_months || 1,
+    duration: record.durationMonths ?? record.duration ?? record.duration_months ?? 1,
     textQuota: record.textQuota || 0,
     imageQuota: record.imageQuota || 0,
-    deviceLimit: record.deviceLimit || record.device_count || 1,
-    storageLimit: record.storageLimit || record.storage_limit || 0,
+    videoQuota: record.videoQuota || 0,
+    deviceLimit: record.deviceCount ?? record.deviceLimit ?? record.device_count ?? 1,
+    storageLimit: record.storageLimit ?? record.storage_limit ?? 0,
     sort: record.sort ?? 0,
     description: record.description || '',
     recommend: !!record.recommend,
@@ -458,7 +474,22 @@ const handleEdit = (record) => {
 
 const handleToggle = async (record) => {
   try {
-    await updatePlan(record.id, { status: record.status === 1 ? 0 : 1 })
+    const body = {
+      name: record.name,
+      level: record.level || 'basic',
+      price: record.price,
+      durationMonths: record.durationMonths ?? record.duration_months ?? 1,
+      deviceCount: record.deviceCount ?? record.device_count ?? 1,
+      textQuota: record.textQuota || 0,
+      imageQuota: record.imageQuota || 0,
+      videoQuota: record.videoQuota || 0,
+      storageLimit: record.storageLimit ?? record.storage_limit ?? 0,
+      recommend: record.recommend || 0,
+      sort: record.sort || 0,
+      description: record.description || '',
+      status: record.status === 1 ? 0 : 1
+    }
+    await updatePlan(record.id, body)
     message.success(record.status === 1 ? '已下架' : '已上架')
     loadData()
   } catch (e) {
@@ -470,12 +501,27 @@ const handleSubmit = async () => {
   try {
     await formRef.value.validate()
     submitting.value = true
-    
+    // 字段名对齐后端 PlanCreateRequest 契约
+    const body = {
+      name: formData.name,
+      level: formData.level,
+      price: formData.price,
+      durationMonths: formData.duration,
+      deviceCount: formData.deviceLimit,
+      textQuota: formData.textQuota,
+      imageQuota: formData.imageQuota,
+      videoQuota: formData.videoQuota || 0,
+      storageLimit: formData.storageLimit,
+      recommend: formData.recommend ? 1 : 0,
+      sort: formData.sort || 0,
+      description: formData.description || '',
+      status: formData.status ?? 1
+    }
     if (isEdit.value) {
-      await updatePlan(formData.id, formData)
+      await updatePlan(formData.id, body)
       message.success('编辑成功')
     } else {
-      await createPlan(formData)
+      await createPlan(body)
       message.success('新增成功')
     }
     modalVisible.value = false

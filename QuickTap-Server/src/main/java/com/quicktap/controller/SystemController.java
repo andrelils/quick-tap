@@ -161,7 +161,7 @@ public class SystemController {
         // SUPER_ADMIN 可访问所有商户
         if ("SUPER_ADMIN".equals(role)) {
             try {
-                List<Merchant> all = merchantService.getMerchantList(1, 1000);
+                List<Merchant> all = merchantService.getMerchantList(1, 1000, null, null);
                 return all.stream().map(Merchant::getId).collect(Collectors.toList());
             } catch (Exception e) {
                 return new ArrayList<>();

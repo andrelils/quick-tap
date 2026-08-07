@@ -44,4 +44,13 @@ public interface AiGenerateRecordMapper {
      * 按类型和状态统计记录数
      */
     long countByTypeAndStatus(@Param("type") String type, @Param("status") Integer status);
+
+    /**
+     * 按类型、状态和时间范围统计记录数
+     */
+    long countByTypeAndStatusBetween(
+        @Param("type") String type,
+        @Param("status") Integer status,
+        @Param("start") java.time.LocalDateTime start,
+        @Param("end") java.time.LocalDateTime end);
 }

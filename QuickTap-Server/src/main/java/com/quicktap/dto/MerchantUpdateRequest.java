@@ -85,7 +85,17 @@ public class MerchantUpdateRequest {
      */
     private String referrerCode;
 
+    /**
+     * 商家简介（C 端展示）
+     */
+    private String description;
+
     // ========== 管理员可修改字段 ==========
+
+    /**
+     * 状态：1启用/0禁用（仅管理员可修改）
+     */
+    private Integer status;
 
     /**
      * 套餐 ID（仅管理员可修改）

@@ -56,6 +56,9 @@ public class UserService {
 
         // 检查电话是否已注册（如果提供）
         if (request.getPhone() != null && !request.getPhone().isEmpty()) {
+            if (!request.getPhone().matches("^1[3-9]\\d{9}$")) {
+                throw new BusinessException(ErrorCode.INVALID_REQUEST, "手机号格式不正确，请输入正确的11位手机号");
+            }
             User existing = userMapper.selectByPhone(request.getPhone());
             if (existing != null) {
                 throw new BusinessException(ErrorCode.PHONE_EXISTS, "该电话号码已被注册");
@@ -64,6 +67,10 @@ public class UserService {
 
         User user = User.builder()
                 .username(request.getUsername())
+                .openid(request.getOpenid() != null && !request.getOpenid().isEmpty()
+                        ? request.getOpenid()
+                        : "account_" + java.util.UUID.randomUUID().toString().replace("-", ""))
+                .unionid(request.getUnionid())
                 .phone(request.getPhone())
                 .nickname(request.getNickname())
                 .avatar(request.getAvatar() != null ? request.getAvatar() : "")
@@ -162,7 +169,7 @@ public class UserService {
         if (request.getPhone() != null) {
             // 检查电话是否已被其他用户使用
             User existingPhone = userMapper.selectByPhone(request.getPhone());
-            if (existingPhone != null && !existingPhone.getId().equals(userId)) {
+            if (existingPhone != null && existingPhone.getId().longValue() != userId) {
                 throw new BusinessException(ErrorCode.PHONE_EXISTS, "该电话号码已被使用");
             }
             user.setPhone(request.getPhone());
@@ -180,6 +187,9 @@ public class UserService {
      */
     @Transactional(rollbackFor = Exception.class)
     public UserDTO bindPhone(Long userId, String phone) {
+        if (phone == null || !phone.matches("^1[3-9]\\d{9}$")) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "手机号格式不正确，请输入正确的11位手机号");
+        }
         User user = userMapper.selectById((long) userId.intValue());
         if (user == null) {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND, "用户不存在");
@@ -187,7 +197,7 @@ public class UserService {
 
         // 检查电话是否已被使用
         User existingPhone = userMapper.selectByPhone(phone);
-        if (existingPhone != null && !existingPhone.getId().equals(userId)) {
+        if (existingPhone != null && existingPhone.getId().longValue() != userId) {
             throw new BusinessException(ErrorCode.PHONE_EXISTS, "该电话号码已被使用");
         }
 

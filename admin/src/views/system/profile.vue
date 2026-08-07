@@ -179,7 +179,8 @@ const formData = reactive({
 })
 
 const formRules = {
-  nickname: [{ required: true, message: '请输入昵称', trigger: 'blur' }]
+  nickname: [{ required: true, message: '请输入昵称', trigger: 'blur' }],
+  phone: [{ pattern: /^1[3-9]\d{9}$/, message: '手机号格式不正确，请输入正确的11位手机号', trigger: 'blur' }]
 }
 
 const passwordForm = reactive({

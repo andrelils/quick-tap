@@ -5,6 +5,7 @@ import com.quicktap.entity.Admin;
 import com.quicktap.service.AuthService;
 import com.quicktap.service.AuditLoggingService;
 import com.quicktap.service.AdminService;
+import com.quicktap.service.RoleService;
 import com.quicktap.security.JwtTokenProvider;
 import com.quicktap.security.SecurityUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -43,6 +44,9 @@ public class AuthController {
 
     @Autowired
     private SecurityUtil securityUtil;
+
+    @Autowired
+    private RoleService roleService;
 
     /**
      * 管理员登录
@@ -338,41 +342,16 @@ public class AuthController {
      * 与RoleController中的getRolePermissions方法保持一致
      */
     private java.util.List<String> getRolePermissions(String roleId) {
-        switch (roleId) {
-            case "SUPER_ADMIN":
-            case "super_admin":
-                return Arrays.asList(
-                    "admin.view", "admin.create", "admin.edit", "admin.delete",
-                    "merchant.view", "merchant.create", "merchant.edit", "merchant.delete",
-                    "device.view", "device.create", "device.edit", "device.delete",
-                    "user.view", "user.create", "user.edit", "user.delete",
-                    "order.view", "order.edit",
-                    "statistics.view",
-                    "ai-generate.use", "ai-generate.view",
-                    "corpus.manage",
-                    "settings.manage",
-                    "role.manage"
-                );
-            case "ADMIN":
-            case "admin":
-                return Arrays.asList(
-                    "merchant.view", "merchant.create", "merchant.edit",
-                    "device.view", "device.create", "device.edit",
-                    "user.view",
-                    "order.view",
-                    "statistics.view"
-                );
-            case "MERCHANT":
-            case "merchant":
-                return Arrays.asList(
-                    "device.view", "device.create", "device.edit",
-                    "order.view",
-                    "statistics.view",
-                    "ai-generate.use", "ai-generate.view",
-                    "corpus.manage"
-                );
-            default:
-                return new java.util.ArrayList<>();
+        // 权限来自 role 表配置（内置角色可页面配置，自定义角色同样），未配置时用 permissions 表默认
+        try {
+            String roleName = roleId == null ? "" : roleId.trim().toLowerCase();
+            if (RoleService.BUILT_IN_ROLES.contains(roleName)
+                    || roleService.exists(roleName)) {
+                return roleService.getEffectivePermissions(roleName);
+            }
+        } catch (Exception e) {
+            log.warn("读取角色权限失败: {}", e.getMessage());
         }
+        return new java.util.ArrayList<>();
     }
 }

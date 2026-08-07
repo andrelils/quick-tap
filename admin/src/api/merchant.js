@@ -51,20 +51,20 @@ export const getMerchantStorage = (id) => {
 
 // 商户额度管理（管理员视角）
 export const getMerchantQuotaList = (params) => {
-  // 后端提供 /admin/merchant-quota/all（返回所有商户额度汇总；分页在前端做）
-  return request.get('/admin/merchant-quota/all', { params })
+  // 后端提供 /admin/merchant-quota/list（分页返回各商户额度）
+  return request.get('/admin/merchant-quota/list', { params })
 }
 
 export const updateMerchantQuota = (id, data) => {
-  // 后端：/admin/merchant-quota/{merchantId}/reset 用于重置月度额度
-  return request.post(`/admin/merchant-quota/${id}/reset`, data)
+  // 后端：/admin/merchant-quota/{merchantId}/adjust 调整存储与AI生成额度（0 表示不限）
+  return request.post(`/admin/merchant-quota/${id}/adjust`, data)
 }
 
 // 商家自己的额度 & 订单
-export const getMyQuota = () => {
-  // 后端 MerchantQuotaController: /merchant/merchant-quota/usage?merchantId=xxx
-  // 对于商家自身，没有传 merchantId 也可从 token 拿；这里传参也可
-  return request.get('/merchant/merchant-quota/usage')
+export const getMyQuota = (params) => {
+  // 后端 MerchantQuotaController: /merchant/merchant-quota/usage
+  // 商家自身可不传 merchantId（从 token 取）；管理员可传 merchantId 指定查询
+  return request.get('/merchant/merchant-quota/usage', { params })
 }
 
 export const getMyOrders = (params) => {

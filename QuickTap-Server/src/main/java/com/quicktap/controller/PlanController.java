@@ -70,7 +70,10 @@ public class PlanController {
         plan.setImageQuota(request.getImageQuota());
         plan.setVideoQuota(request.getVideoQuota());
         plan.setStorageLimit(request.getStorageLimit());
-        plan.setStatus(1);
+        plan.setRecommend(request.getRecommend() != null ? request.getRecommend() : 0);
+        plan.setSort(request.getSort() != null ? request.getSort() : 0);
+        plan.setDescription(request.getDescription());
+        plan.setStatus(request.getStatus() != null ? request.getStatus() : 1);
         Plan created = planService.createPlan(plan);
         return ApiResponse.success("创建成功", created);
     }
@@ -90,6 +93,10 @@ public class PlanController {
         plan.setImageQuota(request.getImageQuota());
         plan.setVideoQuota(request.getVideoQuota());
         plan.setStorageLimit(request.getStorageLimit());
+        plan.setRecommend(request.getRecommend() != null ? request.getRecommend() : 0);
+        plan.setSort(request.getSort() != null ? request.getSort() : 0);
+        plan.setDescription(request.getDescription());
+        plan.setStatus(request.getStatus() != null ? request.getStatus() : 1);
         Plan updated = planService.updatePlan(id, plan);
         return ApiResponse.success("更新成功", updated);
     }

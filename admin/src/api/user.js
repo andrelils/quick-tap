@@ -18,7 +18,7 @@ export const deleteUser = (id) => {
 
 // status: 1=启用, 0=禁用
 export const updateUserStatus = (id, status) => {
-  return request.put(`/admin/user/${id}/status`, { status })
+  return request.put(`/admin/user/${id}/status`, null, { params: { status } })
 }
 
 export const resetUserPassword = (id, password) => {

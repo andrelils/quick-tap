@@ -319,6 +319,9 @@ const loadData = async () => {
     })
     const list = (res?.list || []).map(item => ({
       ...item,
+      sort: item.sortOrder,
+      status: item.enabled ? 1 : 0,
+      icon: item.iconUrl,
       requiredParams: typeof item.requiredParams === 'string' ? JSON.parse(item.requiredParams || '[]') : (item.requiredParams || []),
       optionalParams: typeof item.optionalParams === 'string' ? JSON.parse(item.optionalParams || '[]') : (item.optionalParams || [])
     }))
@@ -378,12 +381,28 @@ const handleSubmit = async () => {
   try {
     await formRef.value.validate()
     submitting.value = true
-    const payload = JSON.parse(JSON.stringify(formData))
+    const f = JSON.parse(JSON.stringify(formData))
+    // 字段名对齐后端 PromotionPlatformDTO 契约，requiredParams/optionalParams 为 JSON 字符串
+    const body = {
+      code: f.code,
+      name: f.name,
+      description: f.description,
+      iconUrl: f.icon,
+      color: f.color,
+      jumpMode: f.jumpMode,
+      schemeTemplate: f.schemeTemplate,
+      webUrlTemplate: f.webUrlTemplate,
+      miniprogramAppid: f.miniprogramAppid,
+      miniprogramPathTemplate: f.miniprogramPathTemplate,
+      sortOrder: f.sort,
+      requiredParams: JSON.stringify(f.requiredParams || []),
+      optionalParams: JSON.stringify(f.optionalParams || [])
+    }
     if (isEdit.value) {
-      await updatePlatform(payload.id, payload)
+      await updatePlatform(f.id, body)
       message.success('更新成功')
     } else {
-      await createPlatform(payload)
+      await createPlatform(body)
       message.success('创建成功')
     }
     modalVisible.value = false
@@ -408,7 +427,7 @@ const handleDelete = async (record) => {
 
 const handleStatusChange = async (record, checked) => {
   try {
-    await updatePlatform(record.id, { status: checked ? 1 : 0 })
+    await updatePlatform(record.id, { enabled: checked })
     record.status = checked ? 1 : 0
     message.success(checked ? '已启用' : '已停用')
   } catch (e) {
@@ -456,8 +475,8 @@ const handleParamsSubmit = async () => {
   try {
     submitting.value = true
     await updatePlatform(formData.id, {
-      requiredParams: formData.requiredParams,
-      optionalParams: formData.optionalParams
+      requiredParams: JSON.stringify(formData.requiredParams || []),
+      optionalParams: JSON.stringify(formData.optionalParams || [])
     })
     message.success('参数定义保存成功')
     paramsModalVisible.value = false

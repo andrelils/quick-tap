@@ -11,7 +11,7 @@
         <div class="logo-icon">
           <LikeOutlined />
         </div>
-        <span v-if="!appStore.collapsed" class="logo-text">碰一碰好评卡</span>
+        <span v-if="!appStore.collapsed" class="logo-text">{{ APP_NAME }}</span>
       </div>
       
       <a-menu
@@ -168,7 +168,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message, Modal } from 'ant-design-vue'
 import {
@@ -187,6 +187,7 @@ import {
 } from '@ant-design/icons-vue'
 import { useAppStore } from '@/store/app'
 import { useUserStore } from '@/store/user'
+import { APP_NAME } from '@/config/app'
 import { getMerchantList } from '@/api/merchant'
 
 const route = useRoute()
@@ -412,6 +413,12 @@ onMounted(() => {
   if (userStore.isAdmin) {
     loadMerchantList()
   }
+  // 商家列表新增/编辑/删除后实时刷新"切换商家视图"下拉
+  window.addEventListener('merchant-changed', loadMerchantList)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('merchant-changed', loadMerchantList)
 })
 
 const goToProfile = () => {

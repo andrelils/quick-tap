@@ -32,16 +32,24 @@ public class MerchantController {
 
     /**
      * 获取商户列表（管理员可见）
+     * 支持分页（page 或 pageNum）、关键词搜索（名称/联系人/电话）、状态过滤
      */
     @GetMapping("/list")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
     public ApiResponse<PageResponse<Merchant>> getMerchantList(
-            @RequestParam(defaultValue = "1") Integer pageNum,
-            @RequestParam(defaultValue = "10") Integer pageSize) {
-        log.info("获取商户列表: pageNum={}, pageSize={}", pageNum, pageSize);
-        List<Merchant> list = merchantService.getMerchantList(pageNum, pageSize);
-        Long total = merchantService.getMerchantCount();
-        PageResponse<Merchant> pageResponse = PageResponse.of(list, pageNum, pageSize, total);
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer pageNum,
+            @RequestParam(defaultValue = "10") Integer pageSize,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Integer status) {
+        int pn = (page != null && page > 0) ? page : (pageNum != null && pageNum > 0 ? pageNum : 1);
+        if (pageSize == null || pageSize <= 0 || pageSize > 200) {
+            pageSize = 10;
+        }
+        log.info("获取商户列表: page={}, pageSize={}, keyword={}, status={}", pn, pageSize, keyword, status);
+        List<Merchant> list = merchantService.getMerchantList(pn, pageSize, keyword, status);
+        Long total = merchantService.getMerchantCount(keyword, status);
+        PageResponse<Merchant> pageResponse = PageResponse.of(list, pn, pageSize, total);
         return ApiResponse.success("获取成功", pageResponse);
     }
 
@@ -57,7 +65,7 @@ public class MerchantController {
             @RequestParam(defaultValue = "10") Integer pageSize) {
         log.info("按审核状态获取商户: auditStatus={}, pageNum={}, pageSize={}", auditStatus, pageNum, pageSize);
         List<Merchant> list = merchantService.getMerchantByAuditStatus(auditStatus, pageNum, pageSize);
-        Long total = merchantService.getMerchantCount();
+        Long total = merchantService.getMerchantCount(null, null);
         PageResponse<Merchant> pageResponse = PageResponse.of(list, pageNum, pageSize, total);
         return ApiResponse.success("获取成功", pageResponse);
     }

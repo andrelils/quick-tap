@@ -128,7 +128,7 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 import { message } from 'ant-design-vue'
-import { getAiConfig, updateAiConfig } from '@/api/ai'
+import { getAiConfig, getMerchantOwnAiConfig, updateAiConfig } from '@/api/ai'
 import { getMerchantList } from '@/api/merchant'
 import { useUserStore } from '@/store/user'
 import { useAppStore } from '@/store/app'
@@ -162,8 +162,9 @@ const loadMerchantOptions = async () => {
 
 const loadConfig = async () => {
   try {
-    const merchantId = userStore.isAdmin ? selectedMerchantId.value : ''
-    const res = await getAiConfig(merchantId)
+    const res = userStore.isAdmin
+      ? await getAiConfig(selectedMerchantId.value)
+      : await getMerchantOwnAiConfig()
     const data = res || {}
     textPrompt.value = data.textPrompt || ''
     imagePrompt.value = data.imagePrompt || ''

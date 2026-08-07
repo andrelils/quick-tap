@@ -106,8 +106,20 @@ export const getOrderList = (params) => {
   return request.get('/order/list', { params })
 }
 
+export const createOrder = (data) => {
+  return request.post('/order', data)
+}
+
+export const payOrder = (id) => {
+  return request.put(`/order/${id}/pay`)
+}
+
 export const refundOrder = (id, data) => {
-  // 后端暂未提供退款接口，走 payOrder 作为占位，避免页面报错
-  console.warn('后端暂未提供订单退款接口，请求已忽略')
-  return Promise.resolve({ id, ...data })
+  // 后端 OrderController: PUT /order/{id}/refund，body 可携带 { reason }
+  return request.put(`/order/${id}/refund`, data || {})
+}
+
+export const exportOrders = (params) => {
+  // 后端 OrderController: GET /order/export，返回全量过滤订单数据
+  return request.get('/order/export', { params })
 }

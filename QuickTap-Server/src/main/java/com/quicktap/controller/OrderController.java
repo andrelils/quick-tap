@@ -31,11 +31,26 @@ public class OrderController {
 
     @GetMapping("/list")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
-    public ApiResponse<PageResponse<Order>> listOrders(
+    public ApiResponse<PageResponse<java.util.Map<String, Object>>> listOrders(
             @RequestParam(defaultValue = "1") Integer pageNum,
             @RequestParam(defaultValue = "10") Integer pageSize) {
-        PageResponse<Order> data = orderService.getOrderList(pageNum, pageSize);
+        PageResponse<java.util.Map<String, Object>> data = orderService.getOrderList(pageNum, pageSize);
         return ApiResponse.success("获取成功", data);
+    }
+
+    /**
+     * 导出订单（带过滤条件，返回全量数据由前端生成 CSV）
+     */
+    @GetMapping("/export")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
+    public ApiResponse<java.util.List<java.util.Map<String, Object>>> exportOrders(
+            @RequestParam(required = false) String orderNo,
+            @RequestParam(required = false) Integer merchantId,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate) {
+        java.util.List<java.util.Map<String, Object>> data = orderService.exportOrders(orderNo, merchantId, status, startDate, endDate);
+        return ApiResponse.success("导出成功", data);
     }
 
     @PostMapping
@@ -62,11 +77,11 @@ public class OrderController {
 
     @GetMapping("/merchant/{merchantId}")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'MERCHANT')")
-    public ApiResponse<PageResponse<Order>> getMerchantOrders(
+    public ApiResponse<PageResponse<java.util.Map<String, Object>>> getMerchantOrders(
             @PathVariable @NotNull Integer merchantId,
             @RequestParam(defaultValue = "1") Integer pageNum,
             @RequestParam(defaultValue = "10") Integer pageSize) {
-        PageResponse<Order> data = orderService.getMerchantOrderList(merchantId, pageNum, pageSize);
+        PageResponse<java.util.Map<String, Object>> data = orderService.getMerchantOrderList(merchantId, pageNum, pageSize);
         return ApiResponse.success("获取成功", data);
     }
 

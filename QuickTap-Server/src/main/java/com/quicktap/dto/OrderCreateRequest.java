@@ -21,6 +21,6 @@ public class OrderCreateRequest {
     private Integer planId;
 
     @NotNull(message = "订单金额不能为空")
-    @DecimalMin(value = "0.01", message = "订单金额必须大于0")
+    @DecimalMin(value = "0", message = "订单金额不能为负数")
     private BigDecimal amount;
 }

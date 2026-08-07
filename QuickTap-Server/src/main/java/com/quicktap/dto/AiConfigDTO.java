@@ -48,6 +48,21 @@ public class AiConfigDTO {
     private Boolean enabled;
 
     /**
+     * 文本生成提示词
+     */
+    private String textPrompt;
+
+    /**
+     * 图片生成提示词
+     */
+    private String imagePrompt;
+
+    /**
+     * 视频生成提示词
+     */
+    private String videoPrompt;
+
+    /**
      * 创建时间
      */
     private LocalDateTime createdAt;

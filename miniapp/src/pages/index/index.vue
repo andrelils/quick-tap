@@ -4,7 +4,7 @@
       <view class="logo-icon">
         <view class="icon-scan" :style="{ width: '80rpx', height: '80rpx' }"></view>
       </view>
-      <text class="app-title">碰一碰好评卡</text>
+      <text class="app-title">{{ APP_NAME }}</text>
       <text class="app-subtitle">智能推广 · 一键好评</text>
       <view class="loading-dots">
         <view class="dot"></view>
@@ -20,6 +20,7 @@
 import { ref, onMounted } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { checkMerchantBind } from '@/api/merchant'
+import { APP_NAME } from '@/config/app'
 
 const statusText = ref('正在识别设备...')
 const hasDevice = ref(false)  // 是否识别到设备

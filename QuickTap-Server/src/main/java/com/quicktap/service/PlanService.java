@@ -147,7 +147,7 @@ public class PlanService {
         if (plan.getVideoQuota() != null) {
             existing.setVideoQuota(plan.getVideoQuota());
         }
-        if (plan.getStorageLimit() != null && plan.getStorageLimit() > 0) {
+        if (plan.getStorageLimit() != null) {
             existing.setStorageLimit(plan.getStorageLimit());
         }
         if (plan.getRecommend() != null) {
@@ -155,6 +155,12 @@ public class PlanService {
         }
         if (plan.getStatus() != null) {
             existing.setStatus(plan.getStatus());
+        }
+        if (plan.getSort() != null) {
+            existing.setSort(plan.getSort());
+        }
+        if (plan.getDescription() != null) {
+            existing.setDescription(plan.getDescription());
         }
 
         planMapper.update(existing);

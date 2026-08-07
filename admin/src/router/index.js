@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import NProgress from 'nprogress'
 import { useUserStore } from '@/store/user'
+import { APP_TITLE } from '@/config/app'
 import { canAccessRoute, getRedirectPath, logAccessDenied } from '@/utils/routerGuard'
 
 const routes = [
@@ -231,7 +232,7 @@ router.beforeEach((to, from, next) => {
 
 router.afterEach((to) => {
   NProgress.done()
-  document.title = to.meta.title ? `${to.meta.title} - 碰一碰好评卡管理系统` : '碰一碰好评卡管理系统'
+  document.title = to.meta.title ? `${to.meta.title} - ${APP_TITLE}` : APP_TITLE
 })
 
 export default router

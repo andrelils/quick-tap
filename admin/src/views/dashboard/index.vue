@@ -117,7 +117,7 @@
         <div class="card-wrapper list-card">
           <div class="card-header">
             <span class="card-title">AI 创作统计</span>
-            <a type="link" size="small">查看更多</a>
+            <a type="link" size="small" @click="$router.push('/ai/generate')">查看更多</a>
           </div>
           <a-table
             :columns="aiColumns"
@@ -141,7 +141,7 @@
         <div class="card-wrapper list-card">
           <div class="card-header">
             <span class="card-title">热门商家 TOP5</span>
-            <a type="link" size="small">查看更多</a>
+            <a type="link" size="small" @click="$router.push('/merchant/list')">查看更多</a>
           </div>
           <div class="merchant-ranking">
             <div 
@@ -326,17 +326,25 @@ const loadTrend = async () => {
 const loadAiStats = async () => {
   try {
     const res = await getAiStats(getMerchantIdParam())
-    const list = res?.stats || (Array.isArray(res) ? res : [])
-    aiStats.value = (Array.isArray(list) ? list : []).map(item => ({
-      type: item.type,
-      typeName: item.typeName || item.typeLabel || item.type,
-      color: item.color || 'blue',
-      today: item.today || 0,
-      week: item.week || 0,
-      month: item.month || 0,
-      status: item.status === 'success' || item.status === 1 ? 'success' : 'processing',
-      statusText: item.statusText || '正常'
-    }))
+    const data = (res && res.generationsByType) || res || {}
+    const typeConfig = [
+      { key: 'text', label: '文字', color: 'blue' },
+      { key: 'image', label: '图片', color: 'purple' },
+      { key: 'video', label: '视频', color: 'gold' }
+    ]
+    aiStats.value = typeConfig.map(t => {
+      const s = data[t.key] || {}
+      return {
+        type: t.key,
+        typeName: t.label,
+        color: t.color,
+        today: s.today || 0,
+        week: s.week || 0,
+        month: s.month || 0,
+        status: 'success',
+        statusText: '正常'
+      }
+    })
   } catch (e) {
     console.error('加载 AI 统计失败', e)
     aiStats.value = []

@@ -23,6 +23,23 @@ export const updateUserInfo = (data) => {
   return request.put('/user/info', data)
 }
 
+// 我的设备 / 扫描记录 / 推广记录 / 统计（需登录）
+export const getMyDevices = () => {
+  return request.get('/user/devices')
+}
+
+export const getMyScanLogs = () => {
+  return request.get('/user/scan-logs')
+}
+
+export const getMyPromotionLogs = () => {
+  return request.get('/user/promotion-logs')
+}
+
+export const getMyStats = () => {
+  return request.get('/user/stats')
+}
+
 // 发送短信验证码
 // 后端未提供此接口
 export const sendSmsCode = (phone) => {

@@ -323,6 +323,7 @@ public class MiniappController {
             item.put("totalCount", total);
             item.put("remainCount", remain);
             item.put("issuedCount", issued);
+            item.put("link", r.get("link"));
             item.put("startTime", norm(r.get("start_time")));
             item.put("endTime", norm(r.get("end_time")));
             item.put("status", r.get("status"));
@@ -768,6 +769,128 @@ public class MiniappController {
         result.put("phone", phone);
         result.put("code", code);
         return ApiResponse.success("验证码已发送（模拟）", result);
+    }
+
+    // =====================================================================================
+    // 6. 用户数据（我的设备 / 扫描记录 / 推广记录 / 统计）
+    // =====================================================================================
+
+    /**
+     * 6.1 我的设备列表
+     * 需登录
+     */
+    @GetMapping("/user/devices")
+    public ApiResponse<List<Map<String, Object>>> myDevices(@AuthenticationPrincipal UserPrincipal principal) {
+        Long userId = currentUserId(principal);
+        if (userId == null) {
+            return ApiResponse.badRequest("用户未登录");
+        }
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+                "SELECT ud.created_at AS bound_at, d.id, d.device_no, d.name, d.type, d.status, " +
+                        "m.id AS merchant_id, m.name AS merchant_name " +
+                        "FROM user_device ud " +
+                        "JOIN device d ON ud.device_id = d.id " +
+                        "LEFT JOIN merchant m ON d.merchant_id = m.id " +
+                        "WHERE ud.user_id = ? ORDER BY ud.created_at DESC LIMIT 100", userId);
+        List<Map<String, Object>> list = new ArrayList<>();
+        for (Map<String, Object> r : rows) {
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("id", r.get("id"));
+            item.put("deviceNo", r.get("device_no"));
+            item.put("name", r.get("name"));
+            item.put("type", r.get("type"));
+            item.put("status", r.get("status"));
+            item.put("merchantId", r.get("merchant_id"));
+            item.put("merchantName", r.get("merchant_name"));
+            item.put("boundAt", norm(r.get("bound_at")));
+            list.add(item);
+        }
+        return ApiResponse.success(list);
+    }
+
+    /**
+     * 6.2 我的扫描记录
+     * 需登录
+     */
+    @GetMapping("/user/scan-logs")
+    public ApiResponse<List<Map<String, Object>>> myScanLogs(@AuthenticationPrincipal UserPrincipal principal) {
+        Long userId = currentUserId(principal);
+        if (userId == null) {
+            return ApiResponse.badRequest("用户未登录");
+        }
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+                "SELECT sl.id, sl.created_at, d.device_no, d.name AS device_name, " +
+                        "m.id AS merchant_id, m.name AS merchant_name " +
+                        "FROM scan_log sl " +
+                        "LEFT JOIN device d ON sl.device_id = d.id " +
+                        "LEFT JOIN merchant m ON sl.merchant_id = m.id " +
+                        "WHERE sl.user_id = ? ORDER BY sl.created_at DESC LIMIT 100", userId);
+        List<Map<String, Object>> list = new ArrayList<>();
+        for (Map<String, Object> r : rows) {
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("id", r.get("id"));
+            item.put("deviceNo", r.get("device_no"));
+            item.put("deviceName", r.get("device_name"));
+            item.put("merchantId", r.get("merchant_id"));
+            item.put("merchantName", r.get("merchant_name"));
+            item.put("createdAt", norm(r.get("created_at")));
+            list.add(item);
+        }
+        return ApiResponse.success(list);
+    }
+
+    /**
+     * 6.3 我的推广记录
+     * 需登录
+     */
+    @GetMapping("/user/promotion-logs")
+    public ApiResponse<List<Map<String, Object>>> myPromotionLogs(@AuthenticationPrincipal UserPrincipal principal) {
+        Long userId = currentUserId(principal);
+        if (userId == null) {
+            return ApiResponse.badRequest("用户未登录");
+        }
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+                "SELECT pl.id, pl.created_at, pp.name AS platform_name, pp.code AS platform_code, " +
+                        "m.id AS merchant_id, m.name AS merchant_name " +
+                        "FROM promotion_click_log pl " +
+                        "LEFT JOIN promotion_platform pp ON pl.platform_id = pp.id " +
+                        "LEFT JOIN merchant m ON pl.merchant_id = m.id " +
+                        "WHERE pl.user_id = ? ORDER BY pl.created_at DESC LIMIT 100", userId);
+        List<Map<String, Object>> list = new ArrayList<>();
+        for (Map<String, Object> r : rows) {
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("id", r.get("id"));
+            item.put("platformName", r.get("platform_name"));
+            item.put("platformCode", r.get("platform_code"));
+            item.put("merchantId", r.get("merchant_id"));
+            item.put("merchantName", r.get("merchant_name"));
+            item.put("createdAt", norm(r.get("created_at")));
+            list.add(item);
+        }
+        return ApiResponse.success(list);
+    }
+
+    /**
+     * 6.4 我的统计（扫描次数/推广点击/优惠券数）
+     * 需登录
+     */
+    @GetMapping("/user/stats")
+    public ApiResponse<Map<String, Object>> myStats(@AuthenticationPrincipal UserPrincipal principal) {
+        Long userId = currentUserId(principal);
+        if (userId == null) {
+            return ApiResponse.badRequest("用户未登录");
+        }
+        Map<String, Object> result = new LinkedHashMap<>();
+        Long scanCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM scan_log WHERE user_id = ?", Long.class, userId);
+        Long promoCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM promotion_click_log WHERE user_id = ?", Long.class, userId);
+        Long couponCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM user_coupon WHERE user_id = ?", Long.class, userId);
+        result.put("totalScans", scanCount == null ? 0 : scanCount);
+        result.put("totalPromotions", promoCount == null ? 0 : promoCount);
+        result.put("coupons", couponCount == null ? 0 : couponCount);
+        return ApiResponse.success(result);
     }
 
     // =====================================================================================

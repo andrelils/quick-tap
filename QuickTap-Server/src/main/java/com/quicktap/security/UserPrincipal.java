@@ -4,6 +4,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import com.quicktap.entity.Admin;
+import com.quicktap.entity.User;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import java.io.Serializable;
@@ -42,12 +43,37 @@ public class UserPrincipal implements UserDetails, Serializable {
     }
 
     /**
+     * 从 C端 User 实体转换为 UserPrincipal
+     * role 固定为 USER
+     */
+    public static UserPrincipal create(User user) {
+        return new UserPrincipal(
+            user.getId().intValue(),
+            user.getUsername(),
+            user.getPassword(),
+            "USER",
+            null,
+            user.getStatus()
+        );
+    }
+
+    /**
      * 返回用户的权限集合
-     * 根据角色返回不同的权限
+     * 根据角色返回不同的权限；自定义角色按管理员(ADMIN)级权限处理，保证后台接口可用
      */
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return Collections.singleton(new SimpleGrantedAuthority("ROLE_" + role.toUpperCase()));
+        String r = role == null ? "" : role.trim().toUpperCase();
+        switch (r) {
+            case "SUPER_ADMIN":
+            case "ADMIN":
+            case "MERCHANT":
+            case "USER":
+                return Collections.singleton(new SimpleGrantedAuthority("ROLE_" + r));
+            default:
+                // 自定义角色：按 ADMIN 级权限处理
+                return Collections.singleton(new SimpleGrantedAuthority("ROLE_ADMIN"));
+        }
     }
 
     /**

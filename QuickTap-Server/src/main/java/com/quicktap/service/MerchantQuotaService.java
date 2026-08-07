@@ -22,6 +22,7 @@ public class MerchantQuotaService {
     private final MerchantMapper merchantMapper;
     private final PlanMapper planMapper;
     private final AiGenerateRecordMapper aiGenerateRecordMapper;
+    private final com.quicktap.mapper.OrderMapper orderMapper;
 
     private Plan getPlanOrNull(Merchant merchant) {
         if (merchant.getPlanId() != null) {
@@ -35,12 +36,12 @@ public class MerchantQuotaService {
         if (merchant == null) {
             throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "商户不存在");
         }
-        Plan plan = getPlanOrNull(merchant);
-        if (plan == null) return false;
+        Long quota = getEffectiveQuota(merchant, "text");
+        if (quota == null || quota <= 0) return true; // 未配置或 0 表示不限
         long usedCount = countGenerationsByType(merchantId, "text");
         log.info("检查文本生成配额: merchantId={}, quota={}, used={}",
-            merchantId, plan.getTextQuota(), usedCount);
-        return usedCount < plan.getTextQuota();
+            merchantId, quota, usedCount);
+        return usedCount < quota;
     }
 
     public boolean checkImageQuota(Integer merchantId) {
@@ -48,12 +49,12 @@ public class MerchantQuotaService {
         if (merchant == null) {
             throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "商户不存在");
         }
-        Plan plan = getPlanOrNull(merchant);
-        if (plan == null) return false;
+        Long quota = getEffectiveQuota(merchant, "image");
+        if (quota == null || quota <= 0) return true; // 未配置或 0 表示不限
         long usedCount = countGenerationsByType(merchantId, "image");
         log.info("检查图片生成配额: merchantId={}, quota={}, used={}",
-            merchantId, plan.getImageQuota(), usedCount);
-        return usedCount < plan.getImageQuota();
+            merchantId, quota, usedCount);
+        return usedCount < quota;
     }
 
     public boolean checkVideoQuota(Integer merchantId) {
@@ -61,12 +62,81 @@ public class MerchantQuotaService {
         if (merchant == null) {
             throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "商户不存在");
         }
-        Plan plan = getPlanOrNull(merchant);
-        if (plan == null) return false;
+        Long quota = getEffectiveQuota(merchant, "video");
+        if (quota == null || quota <= 0) return true; // 未配置或 0 表示不限
         long usedCount = countGenerationsByType(merchantId, "video");
         log.info("检查视频生成配额: merchantId={}, quota={}, used={}",
-            merchantId, plan.getVideoQuota(), usedCount);
-        return usedCount < plan.getVideoQuota();
+            merchantId, quota, usedCount);
+        return usedCount < quota;
+    }
+
+    /**
+     * 校验并返回友好提示：额度足够返回 null，不足返回提示文案
+     */
+    public String validateTextQuota(Integer merchantId) {
+        Merchant merchant = merchantMapper.selectById(merchantId);
+        if (merchant == null) {
+            throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "商户不存在");
+        }
+        Long quota = getEffectiveQuota(merchant, "text");
+        if (quota == null || quota <= 0) return null; // 不限
+        long usedCount = countGenerationsByType(merchantId, "text");
+        if (usedCount >= quota) {
+            return "文字生成额度已用完（已用 " + usedCount + " / " + quota + " 次），请联系管理员调整额度";
+        }
+        return null;
+    }
+
+    public String validateImageQuota(Integer merchantId) {
+        Merchant merchant = merchantMapper.selectById(merchantId);
+        if (merchant == null) {
+            throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "商户不存在");
+        }
+        Long quota = getEffectiveQuota(merchant, "image");
+        if (quota == null || quota <= 0) return null; // 不限
+        long usedCount = countGenerationsByType(merchantId, "image");
+        if (usedCount >= quota) {
+            return "图片生成额度已用完（已用 " + usedCount + " / " + quota + " 次），请联系管理员调整额度";
+        }
+        return null;
+    }
+
+    public String validateVideoQuota(Integer merchantId) {
+        Merchant merchant = merchantMapper.selectById(merchantId);
+        if (merchant == null) {
+            throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "商户不存在");
+        }
+        Long quota = getEffectiveQuota(merchant, "video");
+        if (quota == null || quota <= 0) return null; // 不限
+        long usedCount = countGenerationsByType(merchantId, "video");
+        if (usedCount >= quota) {
+            return "视频生成额度已用完（已用 " + usedCount + " / " + quota + " 次），请联系管理员调整额度";
+        }
+        return null;
+    }
+
+    /**
+     * 获取商户某类型 AI 生成的有效额度
+     * 优先取商户级覆盖配置（textQuotaLimit 等），否则取套餐默认；均无返回 null
+     */
+    private Long getEffectiveQuota(Merchant merchant, String type) {
+        Long override = switch (type) {
+            case "text" -> merchant.getTextQuotaLimit();
+            case "image" -> merchant.getImageQuotaLimit();
+            case "video" -> merchant.getVideoQuotaLimit();
+            default -> null;
+        };
+        if (override != null) {
+            return override;
+        }
+        Plan plan = getPlanOrNull(merchant);
+        if (plan == null) return null;
+        return switch (type) {
+            case "text" -> (long) plan.getTextQuota();
+            case "image" -> (long) plan.getImageQuota();
+            case "video" -> (long) plan.getVideoQuota();
+            default -> null;
+        };
     }
 
     public boolean checkStorageQuota(Integer merchantId, long requiredSize) {
@@ -74,9 +144,16 @@ public class MerchantQuotaService {
         if (merchant == null) {
             throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "商户不存在");
         }
-        long availableSpace = (merchant.getStorageLimit() - merchant.getStorageUsed()) * 1024 * 1024;
+        // 存储限制为 0 或空 表示不限制
+        long limitMB = merchant.getStorageLimit() == null ? 0 : merchant.getStorageLimit();
+        if (limitMB <= 0) {
+            log.info("检查存储配额: merchantId={} 不限制存储", merchantId);
+            return true;
+        }
+        long usedMB = merchant.getStorageUsed() == null ? 0 : merchant.getStorageUsed();
+        long availableSpace = (limitMB - usedMB) * 1024 * 1024;
         log.info("检查存储配额: merchantId={}, limit={}MB, used={}MB, required={}B",
-            merchantId, merchant.getStorageLimit(), merchant.getStorageUsed(), requiredSize);
+            merchantId, limitMB, usedMB, requiredSize);
         return availableSpace >= requiredSize;
     }
 
@@ -86,27 +163,51 @@ public class MerchantQuotaService {
             log.warn("商户不存在: merchantId={}", merchantId);
             return buildEmptyQuotaUsage();
         }
-        Plan plan = getPlanOrNull(merchant);
-        if (plan == null) {
-            log.warn("商户 {} 未绑定套餐，返回默认配额", merchantId);
-            return buildEmptyQuotaUsage();
-        }
 
         Map<String, Object> usage = new HashMap<>();
         long textUsed = countGenerationsByType(merchantId, "text");
         long imageUsed = countGenerationsByType(merchantId, "image");
         long videoUsed = countGenerationsByType(merchantId, "video");
 
+        // 当前套餐信息（供 my-quota 页面展示）
+        Plan plan = getPlanOrNull(merchant);
+        if (plan != null) {
+            Map<String, Object> currentPlan = new HashMap<>();
+            currentPlan.put("planId", plan.getId());
+            currentPlan.put("planName", plan.getName());
+            currentPlan.put("planLevel", plan.getLevel());
+            currentPlan.put("price", plan.getPrice());
+            currentPlan.put("durationMonths", plan.getDurationMonths());
+            currentPlan.put("deviceCount", plan.getDeviceCount());
+            currentPlan.put("storageLimit", plan.getStorageLimit());
+            currentPlan.put("textQuota", plan.getTextQuota());
+            currentPlan.put("imageQuota", plan.getImageQuota());
+            currentPlan.put("videoQuota", plan.getVideoQuota());
+            // 开通/到期时间：取最近一笔已支付订单
+            java.util.Map<String, Object> latestPaid = orderMapper.selectLatestPaidByMerchantId(merchantId);
+            if (latestPaid != null) {
+                currentPlan.put("paidAt", latestPaid.get("created_at"));
+                currentPlan.put("expireAt", latestPaid.get("expire_at"));
+            }
+            usage.put("currentPlan", currentPlan);
+        }
+
         Map<String, Object> aiQuota = new HashMap<>();
-        aiQuota.put("text", Map.of("quota", plan.getTextQuota(), "used", textUsed, "remaining", Math.max(0, plan.getTextQuota() - textUsed)));
-        aiQuota.put("image", Map.of("quota", plan.getImageQuota(), "used", imageUsed, "remaining", Math.max(0, plan.getImageQuota() - imageUsed)));
-        aiQuota.put("video", Map.of("quota", plan.getVideoQuota(), "used", videoUsed, "remaining", Math.max(0, plan.getVideoQuota() - videoUsed)));
+        Long textQuota = getEffectiveQuota(merchant, "text");
+        Long imageQuota = getEffectiveQuota(merchant, "image");
+        Long videoQuota = getEffectiveQuota(merchant, "video");
+        aiQuota.put("text", Map.of("quota", textQuota == null ? 0 : textQuota, "used", textUsed, "remaining", textQuota == null || textQuota <= 0 ? -1 : Math.max(0, textQuota - textUsed), "unlimited", textQuota == null || textQuota <= 0));
+        aiQuota.put("image", Map.of("quota", imageQuota == null ? 0 : imageQuota, "used", imageUsed, "remaining", imageQuota == null || imageQuota <= 0 ? -1 : Math.max(0, imageQuota - imageUsed), "unlimited", imageQuota == null || imageQuota <= 0));
+        aiQuota.put("video", Map.of("quota", videoQuota == null ? 0 : videoQuota, "used", videoUsed, "remaining", videoQuota == null || videoQuota <= 0 ? -1 : Math.max(0, videoQuota - videoUsed), "unlimited", videoQuota == null || videoQuota <= 0));
         usage.put("aiGeneration", aiQuota);
 
+        long limitMB = merchant.getStorageLimit() == null ? 0 : merchant.getStorageLimit();
+        long usedMB = merchant.getStorageUsed() == null ? 0 : merchant.getStorageUsed();
         Map<String, Object> storageQuota = new HashMap<>();
-        storageQuota.put("limit", merchant.getStorageLimit());
-        storageQuota.put("used", merchant.getStorageUsed());
-        storageQuota.put("remaining", Math.max(0, merchant.getStorageLimit() - merchant.getStorageUsed()));
+        storageQuota.put("limit", limitMB);
+        storageQuota.put("used", usedMB);
+        storageQuota.put("remaining", limitMB <= 0 ? -1 : Math.max(0, limitMB - usedMB));
+        storageQuota.put("unlimited", limitMB <= 0);
         usage.put("storage", storageQuota);
         return usage;
     }
@@ -127,8 +228,10 @@ public class MerchantQuotaService {
         if (merchant == null) {
             throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "商户不存在");
         }
-        long newUsedStorage = merchant.getStorageUsed() + sizeInMB;
-        if (newUsedStorage > merchant.getStorageLimit()) {
+        long used = merchant.getStorageUsed() == null ? 0 : merchant.getStorageUsed();
+        long limit = merchant.getStorageLimit() == null ? 0 : merchant.getStorageLimit();
+        long newUsedStorage = used + sizeInMB;
+        if (limit > 0 && newUsedStorage > limit) {
             throw new BusinessException(ErrorCode.INVALID_REQUEST, "存储空间不足");
         }
         merchant.setStorageUsed(newUsedStorage);
@@ -141,7 +244,8 @@ public class MerchantQuotaService {
         if (merchant == null) {
             throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "商户不存在");
         }
-        long newUsedStorage = Math.max(0, merchant.getStorageUsed() - sizeInMB);
+        long used = merchant.getStorageUsed() == null ? 0 : merchant.getStorageUsed();
+        long newUsedStorage = Math.max(0, used - sizeInMB);
         merchant.setStorageUsed(newUsedStorage);
         merchantMapper.update(merchant);
         log.info("减少存储使用量: merchantId={}, newUsed={}MB", merchantId, newUsedStorage);
@@ -221,5 +325,93 @@ public class MerchantQuotaService {
         result.put("totalStorageUsed", 0);
         result.put("totalAIGenerations", totalAiGenerations);
         return result;
+    }
+
+    /**
+     * 管理员端：分页获取所有商户的额度列表（含套餐名、存储、AI生成额度与用量）
+     */
+    public Map<String, Object> getAdminQuotaList(Integer page, Integer pageSize, String keyword) {
+        int pn = (page == null || page <= 0) ? 1 : page;
+        int ps = (pageSize == null || pageSize <= 0 || pageSize > 200) ? 10 : pageSize;
+        int offset = (pn - 1) * ps;
+
+        List<Merchant> merchants = merchantMapper.selectPage(offset, ps, keyword, null);
+        long total = merchantMapper.countAll(keyword, null);
+
+        List<Map<String, Object>> list = new ArrayList<>();
+        if (merchants != null) {
+            for (Merchant m : merchants) {
+                Map<String, Object> item = new HashMap<>();
+                item.put("id", m.getId());
+                item.put("name", m.getName());
+                item.put("logo", m.getLogo());
+                item.put("status", m.getStatus());
+                item.put("hasCustomQuota",
+                    (m.getStorageLimit() != null && m.getStorageLimit() > 0) ||
+                    m.getTextQuotaLimit() != null || m.getImageQuotaLimit() != null || m.getVideoQuotaLimit() != null);
+
+                Plan plan = getPlanOrNull(m);
+                item.put("planId", plan != null ? plan.getId() : null);
+                item.put("planName", plan != null ? plan.getName() : "未绑定套餐");
+                item.put("planLevel", plan != null ? plan.getLevel() : null);
+
+                long limitMB = m.getStorageLimit() == null ? 0 : m.getStorageLimit();
+                long usedMB = m.getStorageUsed() == null ? 0 : m.getStorageUsed();
+                Map<String, Object> storage = new HashMap<>();
+                storage.put("limit", limitMB);
+                storage.put("used", usedMB);
+                storage.put("unlimited", limitMB <= 0);
+                storage.put("percent", limitMB > 0 ? Math.min(100, Math.round((usedMB * 100.0) / limitMB)) : 0);
+                item.put("storage", storage);
+
+                item.put("textQuota", buildQuotaItem(getEffectiveQuota(m, "text"), countGenerationsByType(m.getId(), "text")));
+                item.put("imageQuota", buildQuotaItem(getEffectiveQuota(m, "image"), countGenerationsByType(m.getId(), "image")));
+                item.put("videoQuota", buildQuotaItem(getEffectiveQuota(m, "video"), countGenerationsByType(m.getId(), "video")));
+
+                list.add(item);
+            }
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("list", list);
+        result.put("total", total);
+        result.put("page", pn);
+        result.put("pageSize", ps);
+        return result;
+    }
+
+    private Map<String, Object> buildQuotaItem(Long quota, long used) {
+        Map<String, Object> item = new HashMap<>();
+        boolean unlimited = quota == null || quota <= 0;
+        item.put("total", unlimited ? 0 : quota);
+        item.put("used", used);
+        item.put("unlimited", unlimited);
+        item.put("remaining", unlimited ? -1 : Math.max(0, quota - used));
+        return item;
+    }
+
+    /**
+     * 管理员端：调整商户额度
+     * storageLimit / textQuota / imageQuota / videoQuota 为 null 时不修改；0 表示不限
+     */
+    public void adjustQuota(Integer merchantId, Long storageLimit, Long textQuota, Long imageQuota, Long videoQuota) {
+        Merchant merchant = merchantMapper.selectById(merchantId);
+        if (merchant == null) {
+            throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "商户不存在");
+        }
+        if (storageLimit != null) {
+            if (storageLimit < 0) throw new BusinessException(ErrorCode.INVALID_REQUEST, "存储上限不能为负数");
+            if (storageLimit > 0 && merchant.getStorageUsed() != null && merchant.getStorageUsed() > storageLimit) {
+                throw new BusinessException(ErrorCode.INVALID_REQUEST,
+                    "调整失败：当前已使用 " + merchant.getStorageUsed() + "MB，不能低于已使用量");
+            }
+            merchant.setStorageLimit(storageLimit);
+        }
+        if (textQuota != null) merchant.setTextQuotaLimit(textQuota < 0 ? null : textQuota);
+        if (imageQuota != null) merchant.setImageQuotaLimit(imageQuota < 0 ? null : imageQuota);
+        if (videoQuota != null) merchant.setVideoQuotaLimit(videoQuota < 0 ? null : videoQuota);
+        merchantMapper.update(merchant);
+        log.info("调整商户额度: merchantId={}, storageLimit={}, textQuota={}, imageQuota={}, videoQuota={}",
+            merchantId, storageLimit, textQuota, imageQuota, videoQuota);
     }
 }

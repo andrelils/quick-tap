@@ -27,14 +27,14 @@ public class OrderService {
     private MerchantQuotaService merchantQuotaService;
 
     /**
-     * 获取订单列表（分页）
+     * 获取订单列表（分页，联查商家名/套餐名，返回 camelCase map 供 admin 订单页与 my-quota 使用）
      */
-    public PageResponse<Order> getOrderList(Integer pageNum, Integer pageSize) {
+    public PageResponse<java.util.Map<String, Object>> getOrderList(Integer pageNum, Integer pageSize) {
         pageNum = Math.max(pageNum, 1);
         pageSize = Math.max(Math.min(pageSize, 100), 1);
         int offset = (pageNum - 1) * pageSize;
 
-        List<Order> list = orderMapper.selectPage(offset, pageSize);
+        List<java.util.Map<String, Object>> list = orderMapper.selectPageWithNames(offset, pageSize);
         long total = orderMapper.countAll();
 
         return PageResponse.of(list, pageNum, pageSize, total);
@@ -55,9 +55,9 @@ public class OrderService {
     }
 
     /**
-     * 获取商户订单列表（分页）
+     * 获取商户订单列表（分页，联查套餐名，返回 snake_case map 供 my-quota 购买记录展示）
      */
-    public PageResponse<Order> getMerchantOrderList(Integer merchantId, Integer pageNum, Integer pageSize) {
+    public PageResponse<java.util.Map<String, Object>> getMerchantOrderList(Integer merchantId, Integer pageNum, Integer pageSize) {
         if (merchantId == null || merchantId <= 0) {
             throw new BusinessException(ErrorCode.INVALID_REQUEST, "商户ID不能为空");
         }
@@ -65,7 +65,7 @@ public class OrderService {
         pageSize = Math.max(Math.min(pageSize, 100), 1);
         int offset = (pageNum - 1) * pageSize;
 
-        List<Order> list = orderMapper.selectByMerchantIdAndPage(merchantId, offset, pageSize);
+        List<java.util.Map<String, Object>> list = orderMapper.selectMerchantOrdersWithPlan(merchantId, offset, pageSize);
         long total = orderMapper.countByMerchantId(merchantId);
 
         return PageResponse.of(list, pageNum, pageSize, total);
@@ -89,6 +89,20 @@ public class OrderService {
     }
 
     /**
+     * 按条件导出订单（支持订单号/商家/状态/时间范围过滤）
+     */
+    public List<java.util.Map<String, Object>> exportOrders(String orderNo, Integer merchantId,
+                                                            String status, String startDate, String endDate) {
+        return orderMapper.selectForExport(
+                emptyToNull(orderNo), merchantId, emptyToNull(status),
+                emptyToNull(startDate), emptyToNull(endDate), 10000);
+    }
+
+    private String emptyToNull(String s) {
+        return s == null || s.trim().isEmpty() ? null : s.trim();
+    }
+
+    /**
      * 创建订单
      */
     public Order createOrder(Order order) {
@@ -98,8 +112,8 @@ public class OrderService {
         if (order.getPlanId() == null || order.getPlanId() <= 0) {
             throw new BusinessException(ErrorCode.INVALID_REQUEST, "套餐ID不能为空");
         }
-        if (order.getAmount() == null || order.getAmount().compareTo(java.math.BigDecimal.ZERO) <= 0) {
-            throw new BusinessException(ErrorCode.INVALID_REQUEST, "订单金额不能为空或小于等于0");
+        if (order.getAmount() == null || order.getAmount().compareTo(java.math.BigDecimal.ZERO) < 0) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "订单金额不能为空或小于0");
         }
 
         // 生成订单号
@@ -140,8 +154,9 @@ public class OrderService {
     }
 
     /**
-     * 支付订单
+     * 支付订单（支付成功后自动为商户生效对应套餐）
      */
+    @org.springframework.transaction.annotation.Transactional(rollbackFor = Exception.class)
     public Order payOrder(Integer id) {
         Order order = getOrderById(id);
         if (!"pending".equals(order.getStatus())) {
@@ -149,6 +164,16 @@ public class OrderService {
         }
         order.setStatus("paid");
         orderMapper.update(order);
+
+        // 支付成功后为商户切换套餐（含额度/设备数/存储限制）
+        try {
+            merchantQuotaService.changePlan(order.getMerchantId(), order.getPlanId());
+            log.info("支付后套餐生效: orderId={}, merchantId={}, planId={}", id, order.getMerchantId(), order.getPlanId());
+        } catch (Exception e) {
+            log.error("支付后套餐生效失败，事务回滚: orderId={}, error={}", id, e.getMessage(), e);
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "套餐生效失败: " + e.getMessage());
+        }
+
         log.info("订单支付成功, id: {}, orderNo: {}", id, order.getOrderNo());
         return order;
     }

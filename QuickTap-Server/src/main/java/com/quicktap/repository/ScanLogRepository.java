@@ -24,6 +24,11 @@ public interface ScanLogRepository extends JpaRepository<ScanLog, Long> {
     List<ScanLog> findByUserId(Long userId);
 
     /**
+     * 根据用户ID查询扫码记录，按创建时间倒序
+     */
+    List<ScanLog> findByUserIdOrderByCreatedAtDesc(Long userId);
+
+    /**
      * 统计设备扫码次数
      */
     long countByDeviceId(Long deviceId);

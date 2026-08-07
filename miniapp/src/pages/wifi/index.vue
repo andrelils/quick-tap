@@ -97,8 +97,8 @@
         </view>
       </view>
 
-      <!-- WiFi二维码模态框 -->
-      <u-modal v-model="showQrModal" title="WiFi二维码" :show-cancel-button="true" @confirm="saveQrImage" @cancel="closeQrModal" confirm-text="保存" cancel-text="关闭">
+      <!-- WiFi二维码模态框（u-modal 用 show prop 控制，v-model 不生效） -->
+      <u-modal :show="showQrModal" title="WiFi二维码" :show-cancel-button="true" @confirm="saveQrImage" @cancel="closeQrModal" @update:show="v => showQrModal = v" confirm-text="保存" cancel-text="关闭">
         <view class="qr-modal-content">
           <image v-if="wifiQrImageUrl" :src="wifiQrImageUrl" class="qr-modal-image" mode="aspectFit"></image>
           <text class="qr-modal-desc">使用手机系统相机或微信扫描可自动连接到该WiFi</text>

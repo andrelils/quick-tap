@@ -28,7 +28,7 @@
             </a-space>
           </template>
           <template v-else-if="column.key === 'createdAt'">
-            {{ record.createdAt ? dayjs(record.createdAt).format('YYYY-MM-DD HH:mm:ss') : '--' }}
+            {{ formatCreatedAt(record.createdAt) }}
           </template>
           <template v-else-if="column.key === 'action'">
             <a-space size="small">
@@ -45,13 +45,22 @@
     <a-modal v-model:open="modalVisible" :title="modalTitle" width="520px" :footer="null" destroy-on-close>
       <a-form :model="formData" :rules="formRules" ref="formRef" layout="vertical">
         <a-form-item label="角色标识" name="name">
-          <a-input v-model:value="formData.name" :disabled="isEdit && isDefaultRole(formData.name)" placeholder="如：editor" />
+          <a-input v-model:value="formData.name" :disabled="isEdit" placeholder="如：editor（小写字母/数字/下划线）" />
         </a-form-item>
         <a-form-item label="角色名称" name="description">
           <a-input v-model:value="formData.description" placeholder="如：编辑" />
         </a-form-item>
-        <a-form-item label="权限">
-          <a-checkbox-group v-model:value="formData.permissions" :options="permissionOptions" />
+        <a-form-item label="权限（含菜单与操作权限）">
+          <div class="perm-groups">
+            <a-checkbox-group v-model:value="formData.permissions" class="perm-group-all">
+              <div v-for="group in permissionGroups" :key="group.resource" class="perm-group">
+                <div class="perm-group-title">{{ groupLabel(group.resource) }}</div>
+                <div class="perm-checks">
+                  <a-checkbox v-for="p in group.items" :key="p.code" :value="p.code">{{ p.description || p.code }}</a-checkbox>
+                </div>
+              </div>
+            </a-checkbox-group>
+          </div>
         </a-form-item>
         <div class="modal-footer">
           <a-button @click="modalVisible = false">取消</a-button>
@@ -63,11 +72,11 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
 import { PlusOutlined } from '@ant-design/icons-vue'
-import { getRoleList, createRole, updateRole, deleteRole } from '@/api/role'
+import { getRoleList, getAllPermissions, createRole, updateRole, deleteRole } from '@/api/role'
 
 const loading = ref(false)
 const dataSource = ref([])
@@ -79,6 +88,41 @@ const isEdit = ref(false)
 
 const formData = reactive({ id: null, name: '', description: '', permissions: [] })
 
+// 权限数据（来自后端 permissions 表）
+const allPermissions = ref([])
+const permissionGroups = computed(() => {
+  const groups = []
+  const map = {}
+  allPermissions.value.forEach(p => {
+    const res = p.resource || 'other'
+    if (!map[res]) {
+      map[res] = { resource: res, items: [] }
+      groups.push(map[res])
+    }
+    map[res].items.push(p)
+  })
+  return groups
+})
+
+const resourceLabels = {
+  dashboard: '仪表盘',
+  merchant: '商家管理',
+  device: '设备管理',
+  ai: 'AI创作',
+  marketing: '营销管理',
+  system: '系统设置',
+  other: '其他'
+}
+const groupLabel = (res) => resourceLabels[res] || res
+
+// 权限 code → 中文名
+const permNameMap = computed(() => {
+  const m = {}
+  allPermissions.value.forEach(p => { m[p.code] = p.description || p.code })
+  return m
+})
+const getPermissionLabel = (code) => permNameMap.value[code] || code
+
 const formRules = {
   name: [{ required: true, message: '请输入角色标识', trigger: 'blur' }],
   description: [{ required: true, message: '请输入角色名称', trigger: 'blur' }]
@@ -86,28 +130,6 @@ const formRules = {
 
 const defaultRoles = ['super_admin', 'admin', 'merchant']
 const isDefaultRole = (name) => defaultRoles.includes(name)
-
-const permissionOptions = [
-  { label: '仪表盘', value: 'dashboard' },
-  { label: '商家管理', value: 'merchant' },
-  { label: '设备管理', value: 'device' },
-  { label: 'AI创作', value: 'ai' },
-  { label: '营销管理', value: 'marketing' },
-  { label: '系统设置', value: 'system' }
-]
-
-const permissionLabelMap = {
-  dashboard: '仪表盘',
-  merchant: '商家管理',
-  device: '设备管理',
-  ai: 'AI创作',
-  marketing: '营销管理',
-  system: '系统设置'
-}
-
-const getPermissionLabel = (key) => {
-  return permissionLabelMap[key] || key
-}
 
 const columns = [
   { title: '角色标识', dataIndex: 'name', key: 'name', width: 160 },
@@ -117,11 +139,34 @@ const columns = [
   { title: '操作', dataIndex: 'action', key: 'action', width: 140, fixed: 'right' }
 ]
 
+// 创建时间：日期格式化为标准时间；非日期（如"系统内置"）原样显示
+const formatCreatedAt = (val) => {
+  if (!val) return '--'
+  if (typeof val === 'string' && !/^\d{4}-\d{2}-\d{2}/.test(val)) return val
+  return dayjs(val).format('YYYY-MM-DD HH:mm:ss')
+}
+
+const loadPermissions = async () => {
+  try {
+    const res = await getAllPermissions()
+    allPermissions.value = Array.isArray(res) ? res : (res?.list || [])
+  } catch (e) {
+    console.error('加载权限列表失败', e)
+  }
+}
+
 const loadData = async () => {
   loading.value = true
   try {
     const res = await getRoleList({ page: 1, pageSize: 100 })
-    dataSource.value = res || []
+    const list = Array.isArray(res) ? res : (res?.list || [])
+    dataSource.value = list.map(r => ({
+      id: r.id,
+      name: r.name || r.id,
+      description: r.description || '--',
+      permissions: r.permissions || [],
+      createdAt: r.createdAt
+    }))
   } catch (e) {
     console.error('加载角色列表失败', e)
   } finally {
@@ -144,7 +189,7 @@ const handleEdit = (record) => {
 }
 
 const handleDelete = async (record) => {
-  try { await deleteRole(record.id); message.success('删除成功'); loadData() }
+  try { await deleteRole(record.name); message.success('删除成功'); loadData() }
   catch (e) { console.error('删除失败', e) }
 }
 
@@ -153,7 +198,7 @@ const handleSubmit = async () => {
     await formRef.value.validate()
     submitting.value = true
     if (isEdit.value) {
-      await updateRole(formData.id, { name: formData.name, description: formData.description, permissions: formData.permissions })
+      await updateRole(formData.name, { name: formData.description, permissions: formData.permissions })
       message.success('编辑成功')
     } else {
       await createRole({ name: formData.name, description: formData.description, permissions: formData.permissions })
@@ -168,7 +213,7 @@ const handleSubmit = async () => {
   }
 }
 
-onMounted(() => { loadData() })
+onMounted(() => { loadPermissions(); loadData() })
 </script>
 
 <style lang="scss" scoped>
@@ -180,4 +225,9 @@ onMounted(() => { loadData() })
 .table-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .table-title { font-size: 16px; font-weight: 600; color: #1f1f1f; display: flex; align-items: center; gap: 12px; }
 .modal-footer { display: flex; justify-content: flex-end; gap: 12px; margin-top: 16px; padding-top: 16px; border-top: 1px solid #f0f0f0; }
+.perm-groups { width: 100%; max-height: 320px; overflow-y: auto; border: 1px solid #f0f0f0; border-radius: 8px; padding: 12px; }
+.perm-group { margin-bottom: 14px; }
+.perm-group:last-child { margin-bottom: 0; }
+.perm-group-title { font-weight: 600; font-size: 13px; color: #1f1f1f; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px dashed #e8e8e8; }
+.perm-checks { display: flex; flex-wrap: wrap; gap: 4px 16px; }
 </style>

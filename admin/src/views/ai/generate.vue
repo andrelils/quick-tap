@@ -221,7 +221,7 @@
                 </a-space>
               </div>
               <div v-if="itemType(item) === 'text'" class="result-content text-content">
-                {{ item.content }}
+                {{ item.content || item.result }}
               </div>
               <div v-else-if="itemType(item) === 'image'" class="result-content image-content">
                 <img v-if="item.url" :src="item.url" class="result-image" alt="AI 生成图片" />
@@ -425,7 +425,8 @@ const handleGenerate = async () => {
   try {
     const data = buildRequestData(formData.count)
     const res = await callGenerate(data)
-    const list = res.list || res || (Array.isArray(res) ? res : [res])
+    // 兼容：后端单条返回 record 对象，批量返回 { list: [] }
+    const list = res?.list || (Array.isArray(res) ? res : [res])
     results.value = Array.isArray(list) ? list : []
     if (results.value.length > 0 && results.value[0].quota !== undefined) {
       remainingQuota.value = results.value[0].quota
@@ -439,7 +440,7 @@ const handleGenerate = async () => {
 }
 
 const handleCopy = (item) => {
-  const text = item.content || item.url || ''
+  const text = item.content || item.result || item.url || ''
   if (text) {
     navigator.clipboard.writeText(text)
     message.success('已复制到剪贴板')
@@ -448,7 +449,7 @@ const handleCopy = (item) => {
 
 const handleCopyAll = () => {
   const text = results.value
-    .map((r, i) => `${typeLabel(r)}${i + 1}：\n${r.content || r.url || ''}`)
+    .map((r, i) => `${typeLabel(r)}${i + 1}：\n${r.content || r.result || r.url || ''}`)
     .join('\n\n')
   navigator.clipboard.writeText(text)
   message.success('已全部复制')
@@ -457,9 +458,10 @@ const handleCopyAll = () => {
 const handleSave = async () => {
   try {
     for (const item of results.value) {
-      const content = item.content || item.url || ''
+      const content = item.content || item.result || item.url || ''
       if (!content) continue
       await saveCorpus({
+        title: content.slice(0, 50),
         category: generateType.value === 'text' ? formData.textType : 'description',
         content,
         merchantId: formData.merchantId,
@@ -482,7 +484,7 @@ const handleRegenerate = async (index) => {
     generating.value = true
     const data = buildRequestData(1)
     const res = await callGenerate(data)
-    const list = res.list || res || (Array.isArray(res) ? res : [res])
+    const list = res?.list || (Array.isArray(res) ? res : [res])
     const newItem = Array.isArray(list) ? list[0] : null
     if (newItem) {
       results.value.splice(index, 1, newItem)

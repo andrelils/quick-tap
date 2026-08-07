@@ -114,7 +114,7 @@
     </view>
 
     <view class="footer-info">
-      <text class="version">碰一碰好评卡 v1.0.0</text>
+      <text class="version">{{ APP_NAME }} v1.0.0</text>
     </view>
   </view>
 </template>
@@ -123,6 +123,8 @@
 import { ref, onMounted } from 'vue'
 import { onShow, onLoad } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user'
+import { APP_NAME } from '@/config/app'
+import { getMyStats } from '@/api/user'
 
 const userStore = useUserStore()
 
@@ -163,7 +165,16 @@ onShow(() => {
 })
 
 const loadStats = async () => {
-  // TODO: 调用接口加载统计数据
+  try {
+    const res = await getMyStats()
+    stats.value = {
+      totalScans: res?.totalScans || 0,
+      totalPromotions: res?.totalPromotions || 0,
+      coupons: res?.coupons || 0
+    }
+  } catch (e) {
+    console.error('加载统计失败', e)
+  }
 }
 
 const goToLogin = () => {
@@ -200,9 +211,8 @@ const goToRegisterBind = () => {
 }
 
 const goToMyDevices = () => {
-  uni.showToast({
-    title: '功能开发中',
-    icon: 'none'
+  uni.navigateTo({
+    url: '/pages/user/devices'
   })
 }
 
@@ -213,30 +223,27 @@ const goToMyCoupons = () => {
 }
 
 const goToPromotionHistory = () => {
-  uni.showToast({
-    title: '功能开发中',
-    icon: 'none'
+  uni.navigateTo({
+    url: '/pages/user/promotion-history'
   })
 }
 
 const goToScanHistory = () => {
-  uni.showToast({
-    title: '功能开发中',
-    icon: 'none'
+  uni.navigateTo({
+    url: '/pages/user/scan-history'
   })
 }
 
 const goToSettings = () => {
-  uni.showToast({
-    title: '功能开发中',
-    icon: 'none'
+  uni.navigateTo({
+    url: '/pages/user/settings'
   })
 }
 
 const goToAbout = () => {
   uni.showModal({
     title: '关于我们',
-    content: '碰一碰好评卡系统 v1.0.0\n\nNFC智能推广，一键好评，助力商家成长',
+    content: `${APP_NAME}系统 v1.0.0\n\nNFC智能推广，一键好评，助力商家成长`,
     showCancel: false
   })
 }

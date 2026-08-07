@@ -1,25 +1,31 @@
 import request from '@/utils/request'
 
 // ============ AI 内容生成 ============
-// 后端 AiGenerateController 统一用 /merchant/ai-generate/*，参数为 RequestParam
+// 后端 AiGenerateController 统一用 /merchant/ai-generate/*，merchantId 走 RequestParam，prompt 走 RequestBody(JSON)
 // ADMIN 角色由于刚刚在 SecurityConfig 加了访问 /api/merchant/** 权限，也可以调用这些接口
 function buildGenUrl(type, params) {
   const qs = new URLSearchParams()
   if (params?.merchantId != null) qs.append('merchantId', params.merchantId)
-  if (params?.prompt != null) qs.append('prompt', params.prompt)
   return `/merchant/ai-generate/${type}?${qs.toString()}`
 }
 
+function buildGenBody(data) {
+  const body = {}
+  if (data?.prompt != null) body.prompt = data.prompt
+  if (data?.type != null) body.type = data.type
+  return body
+}
+
 export const generateText = (data) => {
-  return request.post(buildGenUrl('text', data))
+  return request.post(buildGenUrl('text', data), buildGenBody(data))
 }
 
 export const generateImage = (data) => {
-  return request.post(buildGenUrl('image', data))
+  return request.post(buildGenUrl('image', data), buildGenBody(data))
 }
 
 export const generateVideo = (data) => {
-  return request.post(buildGenUrl('video', data))
+  return request.post(buildGenUrl('video', data), buildGenBody(data))
 }
 
 export const getGenerateHistory = (params) => {
@@ -39,21 +45,24 @@ export const getGenerateHistory = (params) => {
 
 export const getAiConfig = (merchantId) => {
   if (merchantId) {
-    // 查询指定商家配置：后端没有按 id 查询的端点，优先走商家维度接口 + ADMIN 模拟查询
-    // 全局 /admin/ai-config 拿的是全局模板，不是指定商家的；所以此处直接走商家接口（实际从 token 中取商家身份）
-    // 如果是 ADMIN 查询别人的配置：后端暂缺，降级返回空，避免页面报错
-    return request.get('/merchant/ai-config').catch(() => null)
+    // 管理员按商家查询配置：后端已有 /admin/ai-config/{merchantId} 端点
+    return request.get(`/admin/ai-config/${merchantId}`)
   }
   // 不传 merchantId：超管拿全局配置
   return request.get('/admin/ai-config')
 }
 
+// 商家端获取自己的 AI 配置（token 解析身份）
+export const getMerchantOwnAiConfig = () => {
+  return request.get('/merchant/ai-config')
+}
+
 export const updateAiConfig = (merchantIdOrData, data) => {
   // 两个签名：
-  // updateAiConfig(config) -> 商家端 /merchant/ai-config
-  // updateAiConfig(merchantId, config) -> 超管端 /admin/ai-config（全局） 或 删除单个商家
+  // updateAiConfig(config) -> 商家端 /merchant/ai-config（token 解析身份）
+  // updateAiConfig(merchantId, config) -> 管理员保存指定商家配置 /merchant/ai-config?merchantId=xx
   if (typeof merchantIdOrData === 'string' || typeof merchantIdOrData === 'number') {
-    return request.put('/admin/ai-config', data || merchantIdOrData)
+    return request.put('/merchant/ai-config', data || merchantIdOrData, { params: { merchantId: merchantIdOrData } })
   }
   return request.put('/merchant/ai-config', merchantIdOrData)
 }

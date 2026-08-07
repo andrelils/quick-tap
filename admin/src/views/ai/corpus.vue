@@ -921,6 +921,10 @@ const handleSubmit = async () => {
     submitting.value = true
     
     const submitData = { ...formData }
+    // 后端 tags 为 JSON 字符串，前端表单是数组，需序列化
+    if (Array.isArray(submitData.tags)) {
+      submitData.tags = JSON.stringify(submitData.tags)
+    }
     
     if (isEdit.value) {
       await updateCorpus(formData.id, submitData)

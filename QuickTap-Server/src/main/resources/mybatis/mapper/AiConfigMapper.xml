@@ -4,8 +4,8 @@
 
     <!-- 插入 AI 配置 -->
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO ai_config (merchant_id, text_model, image_model, video_model, api_key, api_secret, enabled, created_at, updated_at)
-        VALUES (#{merchantId}, #{textModel}, #{imageModel}, #{videoModel}, #{apiKey}, #{apiSecret}, #{enabled}, NOW(), NOW())
+        INSERT INTO ai_config (merchant_id, text_model, image_model, video_model, api_key, api_secret, enabled, text_prompt, image_prompt, video_prompt, created_at, updated_at)
+        VALUES (#{merchantId}, #{textModel}, #{imageModel}, #{videoModel}, #{apiKey}, #{apiSecret}, #{enabled}, #{textPrompt}, #{imagePrompt}, #{videoPrompt}, NOW(), NOW())
     </insert>
 
     <!-- 按 ID 查询 -->
@@ -42,6 +42,9 @@
             api_key = #{apiKey},
             api_secret = #{apiSecret},
             enabled = #{enabled},
+            text_prompt = #{textPrompt},
+            image_prompt = #{imagePrompt},
+            video_prompt = #{videoPrompt},
             updated_at = NOW()
         WHERE id = #{id}
     </update>

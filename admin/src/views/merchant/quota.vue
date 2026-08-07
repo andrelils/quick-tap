@@ -74,7 +74,7 @@
               <div class="quota-text">
                 {{ formatQuota(record.storage.used, 'MB') }} / 
                 <span :class="{ 'unlimited-text': record.storage.unlimited }">
-                  {{ record.storage.unlimited ? '不限' : formatQuota(record.storage.total, 'MB') }}
+                  {{ record.storage.unlimited ? '不限' : formatQuota(record.storage.limit, 'MB') }}
                 </span>
               </div>
             </div>
@@ -163,7 +163,7 @@
             style="width: 100%"
             placeholder="0 表示不限，留空则使用套餐默认值"
           />
-          <div class="form-tip">当前套餐默认：{{ currentMerchant?.storage?.unlimited ? '不限' : `${currentMerchant?.storage?.total} MB` }}</div>
+          <div class="form-tip">当前套餐默认：{{ currentMerchant?.storage?.unlimited ? '不限' : `${currentMerchant?.storage?.limit} MB` }}</div>
         </a-form-item>
         
         <a-row :gutter="16">
@@ -245,7 +245,7 @@ import {
   SearchOutlined,
   ReloadOutlined
 } from '@ant-design/icons-vue'
-import { getMerchantList, updateMerchantQuota } from '@/api/merchant'
+import { getMerchantQuotaList, updateMerchantQuota } from '@/api/merchant'
 
 const searchForm = reactive({
   keyword: ''
@@ -315,37 +315,20 @@ const formatQuota = (value, unit) => {
 const loadData = async () => {
   try {
     tableLoading.value = true
-    const res = await getMerchantList({ page: 1, pageSize: 9999 })
-    const merchants = res.list || res || []
-    const allMerchants = Array.isArray(merchants) ? merchants : []
-    
-    // 关键词过滤
-    let filtered = allMerchants
-    if (searchForm.keyword) {
-      const kw = searchForm.keyword.toLowerCase()
-      filtered = allMerchants.filter(m => (m.name || m.shopName || '').toLowerCase().includes(kw))
-    }
-    
-    dataSource.value = filtered.map(m => ({
-      ...m,
-      id: m.id,
-      name: m.name || m.shopName || '',
-      logo: m.logo || '',
-      planName: m.planName || m.plan_name || m.plan?.name || '免费版',
-      planLevel: m.planLevel || m.plan_level || (m.plan?.level) || 'basic',
-      storage: {
-        used: m.storageUsed || m.storage_used || 0,
-        total: m.storageLimit || m.storage_limit || 0,
-        unlimited: (m.storageLimit || m.storage_limit || 0) === 0,
-        percent: (m.storageLimit || m.storage_limit || 0) > 0
-          ? Math.round(((m.storageUsed || m.storage_used || 0) / (m.storageLimit || m.storage_limit || 1)) * 100)
-          : 0
-      },
-      textQuota: { used: 0, total: 0, unlimited: false },
-      imageQuota: { used: 0, total: 0, unlimited: false },
-      videoQuota: { used: 0, total: 0, unlimited: false }
+    const res = await getMerchantQuotaList({
+      page: pagination.current,
+      pageSize: pagination.pageSize,
+      keyword: searchForm.keyword || undefined
+    })
+    const list = res?.list || []
+    dataSource.value = list.map(item => ({
+      ...item,
+      storage: item.storage || { limit: 0, used: 0, unlimited: true, percent: 0 },
+      textQuota: item.textQuota || { total: 0, used: 0, unlimited: false },
+      imageQuota: item.imageQuota || { total: 0, used: 0, unlimited: false },
+      videoQuota: item.videoQuota || { total: 0, used: 0, unlimited: false }
     }))
-    pagination.total = dataSource.value.length
+    pagination.total = res?.total || 0
   } catch (e) {
     console.error('加载额度列表失败', e)
     message.error('加载失败')

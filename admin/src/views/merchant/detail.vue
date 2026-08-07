@@ -99,7 +99,10 @@
                   </a-form-item>
                 </a-col>
                 <a-col :span="12">
-                  <a-form-item label="联系电话" name="contactPhone">
+                  <a-form-item label="联系电话" name="contactPhone" :rules="[
+                    { required: true, message: '请输入联系电话' },
+                    { pattern: /^1[3-9]\d{9}$/, message: '手机号格式不正确，请输入正确的11位手机号' }
+                  ]">
                     <a-input v-model:value="formData.contactPhone" placeholder="请输入联系电话" />
                   </a-form-item>
                 </a-col>
@@ -335,9 +338,12 @@ const logoFileList = ref([])
 const bannerFileList = ref([])
 const shopFileList = ref([])
 
-const uploadAction = import.meta.env.VITE_API_BASE_URL
-  ? `${import.meta.env.VITE_API_BASE_URL}/admin/upload/image`
-  : '/api/admin/upload/image'
+// 上传地址：带上当前商家 id，后端据此校验并累计存储额度
+const uploadAction = computed(() => {
+  const base = import.meta.env.VITE_API_BASE_URL
+  const action = base ? `${base}/admin/upload/image` : '/api/admin/upload/image'
+  return route.params.id ? `${action}?merchantId=${route.params.id}` : action
+})
 
 const uploadHeaders = (() => {
   const token = localStorage.getItem('token')
@@ -450,20 +456,20 @@ const loadData = async () => {
   try {
     const res = await getMerchantDetail(id)
     merchantData.value = res || {}
-    const banners = parseImages(res.banner_images)
-    const shops = parseImages(res.shop_images)
+    const banners = parseImages(res.bannerImages)
+    const shops = parseImages(res.shopImages)
     Object.assign(formData, {
       name: res.name || '',
       logo: res.logo || '',
       bannerImages: banners,
       shopImages: shops,
-      contactName: res.contact_name || '',
-      contactPhone: res.contact_phone || '',
-      bossWechat: res.boss_wechat || '',
+      contactName: res.contactName || '',
+      contactPhone: res.contactPhone || '',
+      bossWechat: res.bossWechat || '',
       address: res.address || '',
-      businessHours: res.business_hours || '',
-      wifiName: res.wifi_name || '',
-      wifiPassword: res.wifi_password || '',
+      businessHours: res.businessHours || '',
+      wifiName: res.wifiName || '',
+      wifiPassword: res.wifiPassword || '',
       description: res.description || ''
     })
     logoFileList.value = res.logo ? [{
@@ -495,8 +501,8 @@ const handleSave = async () => {
     await updateMerchant(route.params.id, {
       name: formData.name,
       logo: formData.logo,
-      bannerImages: formData.bannerImages || [],
-      shopImages: formData.shopImages || [],
+      bannerImages: JSON.stringify(formData.bannerImages || []),
+      shopImages: JSON.stringify(formData.shopImages || []),
       contactName: formData.contactName,
       contactPhone: formData.contactPhone,
       bossWechat: formData.bossWechat || '',
@@ -521,15 +527,15 @@ const goBack = () => {
   const hasChanges = JSON.stringify(merchantData.value) !== JSON.stringify({
     name: formData.name,
     logo: formData.logo,
-    banner_images: formData.bannerImages || [],
-    shop_images: formData.shopImages || [],
-    contact_name: formData.contactName,
-    contact_phone: formData.contactPhone,
-    boss_wechat: formData.bossWechat || '',
+    bannerImages: formData.bannerImages || [],
+    shopImages: formData.shopImages || [],
+    contactName: formData.contactName,
+    contactPhone: formData.contactPhone,
+    bossWechat: formData.bossWechat || '',
     address: formData.address,
-    business_hours: formData.businessHours || '',
-    wifi_name: formData.wifiName || '',
-    wifi_password: formData.wifiPassword || '',
+    businessHours: formData.businessHours || '',
+    wifiName: formData.wifiName || '',
+    wifiPassword: formData.wifiPassword || '',
     description: formData.description
   })
 

@@ -4,6 +4,9 @@ import com.quicktap.dto.ApiResponse;
 import com.quicktap.dto.AdminUpdateRequest;
 import com.quicktap.entity.Admin;
 import com.quicktap.service.AdminService;
+import com.quicktap.service.RoleService;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -166,6 +169,8 @@ import java.util.*;
 public class RoleController {
 
     private final AdminService adminService;
+    private final RoleService roleService;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
      * 获取所有可用角色列表
@@ -177,50 +182,53 @@ public class RoleController {
 
         List<Map<String, Object>> roles = new ArrayList<>();
 
-        // 超级管理员角色
-        Map<String, Object> superAdmin = new HashMap<>();
-        superAdmin.put("id", "super_admin");
-        superAdmin.put("name", "超级管理员");
-        superAdmin.put("description", "拥有系统所有权限");
-        superAdmin.put("permissions", Arrays.asList(
-            "admin.view", "admin.create", "admin.edit", "admin.delete",
-            "merchant.view", "merchant.create", "merchant.edit", "merchant.delete",
-            "device.view", "device.create", "device.edit", "device.delete",
-            "user.view", "user.create", "user.edit", "user.delete",
-            "statistics.view",
-            "settings.manage",
-            "role.manage"
-        ));
-        roles.add(superAdmin);
+        // 内置角色：权限动态（role 表有配置则用之，否则取 permissions 表默认）
+        addBuiltInRole(roles, "super_admin", "超级管理员");
+        addBuiltInRole(roles, "admin", "管理员");
+        addBuiltInRole(roles, "merchant", "商户");
 
-        // 管理员角色
-        Map<String, Object> admin = new HashMap<>();
-        admin.put("id", "admin");
-        admin.put("name", "管理员");
-        admin.put("description", "拥有平台管理权限");
-        admin.put("permissions", Arrays.asList(
-            "merchant.view", "merchant.create", "merchant.edit",
-            "device.view", "device.create", "device.edit",
-            "user.view",
-            "statistics.view"
-        ));
-        roles.add(admin);
-
-        // 商户角色
-        Map<String, Object> merchant = new HashMap<>();
-        merchant.put("id", "merchant");
-        merchant.put("name", "商户");
-        merchant.put("description", "商户管理权限");
-        merchant.put("permissions", Arrays.asList(
-            "device.view", "device.create", "device.edit",
-            "order.view",
-            "statistics.view",
-            "ai-generate.use",
-            "corpus.manage"
-        ));
-        roles.add(merchant);
+        // 自定义角色（来自 role 表），跳过与内置角色重名的历史数据避免重复
+        for (Map<String, Object> r : roleService.listCustom()) {
+            String rname = toStr(r.get("name"));
+            if (RoleService.BUILT_IN_ROLES.contains(rname)) {
+                continue;
+            }
+            Map<String, Object> custom = new HashMap<>();
+            custom.put("id", r.get("id"));
+            custom.put("name", rname);
+            custom.put("description", r.get("description"));
+            custom.put("permissions", parsePermissions(toStr(r.get("permissions"))));
+            custom.put("createdAt", r.get("createdAt"));
+            roles.add(custom);
+        }
 
         return ApiResponse.success(roles);
+    }
+
+    /** 组装内置角色（id/name/description 固定，权限按配置或默认） */
+    private void addBuiltInRole(List<Map<String, Object>> roles, String code, String description) {
+        Map<String, Object> role = new HashMap<>();
+        role.put("id", code);
+        role.put("name", code);
+        role.put("description", description);
+        // 创建时间：role 表有配置记录则用之，未配置过显示"系统内置"
+        Map<String, Object> stored = roleService.getByName(code);
+        Object createdAt = (stored != null) ? stored.get("createdAt") : null;
+        role.put("createdAt", createdAt != null ? createdAt : "系统内置");
+        // 仅保留 permissions 表中存在的权限 code，过滤历史脏数据
+        List<String> effective = roleService.getEffectivePermissions(code);
+        List<String> dbCodes = roleService.listDbPermissionCodes();
+        List<String> valid = new ArrayList<>();
+        for (String p : effective) {
+            if (p.equals("*") || dbCodes.contains(p)) {
+                valid.add(p);
+            }
+        }
+        if (valid.isEmpty()) {
+            valid = roleService.getDefaultPermissionCodes(code);
+        }
+        role.put("permissions", valid);
+        roles.add(role);
     }
 
     // ============================================================================
@@ -235,52 +243,8 @@ public class RoleController {
     @GetMapping("/permissions")
     public ApiResponse<List<Map<String, Object>>> getAllPermissions() {
         log.info("获取所有权限列表");
-
-        List<Map<String, Object>> permissions = new ArrayList<>();
-
-        // 管理员权限
-        permissions.add(createPermission("admin.view", "查看管理员", "admin"));
-        permissions.add(createPermission("admin.create", "创建管理员", "admin"));
-        permissions.add(createPermission("admin.edit", "编辑管理员", "admin"));
-        permissions.add(createPermission("admin.delete", "删除管理员", "admin"));
-
-        // 商户权限
-        permissions.add(createPermission("merchant.view", "查看商户", "merchant"));
-        permissions.add(createPermission("merchant.create", "创建商户", "merchant"));
-        permissions.add(createPermission("merchant.edit", "编辑商户", "merchant"));
-        permissions.add(createPermission("merchant.delete", "删除商户", "merchant"));
-
-        // 设备权限
-        permissions.add(createPermission("device.view", "查看设备", "device"));
-        permissions.add(createPermission("device.create", "创建设备", "device"));
-        permissions.add(createPermission("device.edit", "编辑设备", "device"));
-        permissions.add(createPermission("device.delete", "删除设备", "device"));
-
-        // 用户权限
-        permissions.add(createPermission("user.view", "查看用户", "user"));
-        permissions.add(createPermission("user.create", "创建用户", "user"));
-        permissions.add(createPermission("user.edit", "编辑用户", "user"));
-        permissions.add(createPermission("user.delete", "删除用户", "user"));
-
-        // 订单权限
-        permissions.add(createPermission("order.view", "查看订单", "order"));
-        permissions.add(createPermission("order.edit", "编辑订单", "order"));
-
-        // 统计权限
-        permissions.add(createPermission("statistics.view", "查看统计", "statistics"));
-
-        // AI 生成权限
-        permissions.add(createPermission("ai-generate.use", "使用 AI 生成", "ai"));
-        permissions.add(createPermission("ai-generate.view", "查看 AI 记录", "ai"));
-
-        // 知识库权限
-        permissions.add(createPermission("corpus.manage", "管理知识库", "corpus"));
-
-        // 设置权限
-        permissions.add(createPermission("settings.manage", "管理系统设置", "settings"));
-        permissions.add(createPermission("role.manage", "管理角色权限", "role"));
-
-        return ApiResponse.success(permissions);
+        // 权限源统一来自 permissions 表（含菜单权限与操作权限）
+        return ApiResponse.success(roleService.listDbPermissions());
     }
 
     /**
@@ -394,6 +358,58 @@ public class RoleController {
         return ApiResponse.success(matrix);
     }
 
+    /**
+     * 新增自定义角色
+     * body: { name(标识), description(中文名), permissions: string[] }
+     */
+    @PostMapping
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    public ApiResponse<Map<String, Object>> createRole(@RequestBody(required = false) Map<String, Object> body) {
+        if (body == null) {
+            return ApiResponse.badRequest("请求参数不能为空");
+        }
+        String code = toStr(body.get("code")) != null ? toStr(body.get("code")) : toStr(body.get("name"));
+        String description = toStr(body.get("description"));
+        if (RoleService.BUILT_IN_ROLES.contains(code)) {
+            // 内置角色：走 upsert 保存配置
+            Map<String, Object> created = roleService.upsertBuiltIn(code, description, toPermissionsJson(body.get("permissions")));
+            return ApiResponse.success("保存成功", created);
+        }
+        Map<String, Object> created = roleService.create(code, description, toPermissionsJson(body.get("permissions")));
+        return ApiResponse.success("创建成功", created);
+    }
+
+    /**
+     * 编辑角色（内置角色也允许配置权限；按角色标识 name）
+     * body: { name(中文名), description, permissions: string[] }
+     */
+    @PutMapping("/{roleId}")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    public ApiResponse<Map<String, Object>> updateRole(@PathVariable String roleId,
+                                                       @RequestBody(required = false) Map<String, Object> body) {
+        if (body == null) {
+            return ApiResponse.badRequest("请求参数不能为空");
+        }
+        String description = toStr(body.get("name"));
+        String permissionsJson = toPermissionsJson(body.get("permissions"));
+        if (RoleService.BUILT_IN_ROLES.contains(roleId)) {
+            Map<String, Object> updated = roleService.upsertBuiltIn(roleId, description, permissionsJson);
+            return ApiResponse.success("更新成功", updated);
+        }
+        Map<String, Object> updated = roleService.update(roleId, description, permissionsJson);
+        return ApiResponse.success("更新成功", updated);
+    }
+
+    /**
+     * 删除自定义角色（按角色标识 name）
+     */
+    @DeleteMapping("/{roleId}")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    public ApiResponse<Void> deleteRole(@PathVariable String roleId) {
+        roleService.delete(roleId);
+        return ApiResponse.success("删除成功");
+    }
+
     // ============================================================================
     // DYNAMIC ROUTES - All dynamic routes must come AFTER static routes
     // ============================================================================
@@ -414,40 +430,31 @@ public class RoleController {
                 roleDetail.put("id", "super_admin");
                 roleDetail.put("name", "超级管理员");
                 roleDetail.put("description", "拥有系统所有权限");
-                roleDetail.put("permissions", Arrays.asList(
-                    "admin.view", "admin.create", "admin.edit", "admin.delete",
-                    "merchant.view", "merchant.create", "merchant.edit", "merchant.delete",
-                    "device.view", "device.create", "device.edit", "device.delete",
-                    "user.view", "user.create", "user.edit", "user.delete",
-                    "statistics.view",
-                    "settings.manage",
-                    "role.manage"
-                ));
+                roleDetail.put("permissions", roleService.getEffectivePermissions("super_admin"));
                 break;
             case "admin":
                 roleDetail.put("id", "admin");
                 roleDetail.put("name", "管理员");
                 roleDetail.put("description", "拥有平台管理权限");
-                roleDetail.put("permissions", Arrays.asList(
-                    "merchant.view", "merchant.create", "merchant.edit",
-                    "device.view", "device.create", "device.edit",
-                    "user.view",
-                    "statistics.view"
-                ));
+                roleDetail.put("permissions", roleService.getEffectivePermissions("admin"));
                 break;
             case "merchant":
                 roleDetail.put("id", "merchant");
                 roleDetail.put("name", "商户");
                 roleDetail.put("description", "商户管理权限");
-                roleDetail.put("permissions", Arrays.asList(
-                    "device.view", "device.create", "device.edit",
-                    "order.view",
-                    "statistics.view",
-                    "ai-generate.use",
-                    "corpus.manage"
-                ));
+                roleDetail.put("permissions", roleService.getEffectivePermissions("merchant"));
                 break;
             default:
+                // 自定义角色
+                Map<String, Object> custom = roleService.getByName(roleId);
+                if (custom != null) {
+                    roleDetail.put("id", custom.get("id"));
+                    roleDetail.put("name", custom.get("name"));
+                    roleDetail.put("description", custom.get("description"));
+                    roleDetail.put("permissions", parsePermissions(toStr(custom.get("permissions"))));
+                    roleDetail.put("createdAt", custom.get("createdAt"));
+                    return ApiResponse.success(roleDetail);
+                }
                 return ApiResponse.notFound("角色不存在");
         }
 
@@ -554,9 +561,53 @@ public class RoleController {
     }
 
     /**
-     * 验证角色ID是否有效
+     * 验证角色ID是否有效（内置角色或自定义角色表中存在的角色）
      */
     private boolean isValidRole(String roleId) {
-        return roleId.equals("super_admin") || roleId.equals("admin") || roleId.equals("merchant");
+        return RoleService.BUILT_IN_ROLES.contains(roleId) || roleService.exists(roleId);
+    }
+
+    private String toStr(Object value) {
+        return value == null ? null : String.valueOf(value);
+    }
+
+    /**
+     * 解析 permissions JSON 字符串为列表
+     */
+    private List<String> parsePermissions(String json) {
+        if (json == null || json.isBlank()) {
+            return new ArrayList<>();
+        }
+        try {
+            return objectMapper.readValue(json, new TypeReference<List<String>>() {});
+        } catch (Exception e) {
+            log.warn("解析角色权限失败: {}", e.getMessage());
+            return new ArrayList<>();
+        }
+    }
+
+    /**
+     * 将权限列表序列化为 JSON 字符串
+     */
+    private String toPermissionsJson(Object permissions) {
+        if (permissions == null) {
+            return "[]";
+        }
+        try {
+            return objectMapper.writeValueAsString(permissions);
+        } catch (Exception e) {
+            log.warn("序列化角色权限失败: {}", e.getMessage());
+            return "[]";
+        }
+    }
+
+    private Integer toInt(Object value) {
+        if (value == null) return null;
+        if (value instanceof Number) return ((Number) value).intValue();
+        try {
+            return Integer.parseInt(String.valueOf(value));
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 }

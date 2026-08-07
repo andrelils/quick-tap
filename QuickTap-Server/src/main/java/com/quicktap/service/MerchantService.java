@@ -37,9 +37,11 @@ public class MerchantService {
      * 获取商户列表
      * @param pageNum 页码
      * @param pageSize 每页大小
+     * @param keyword 搜索关键词（名称/联系人/电话模糊匹配）
+     * @param status 状态过滤（可空）
      * @return 商户列表
      */
-    public List<Merchant> getMerchantList(Integer pageNum, Integer pageSize) {
+    public List<Merchant> getMerchantList(Integer pageNum, Integer pageSize, String keyword, Integer status) {
         if (pageNum == null || pageNum <= 0) {
             pageNum = Constants.DEFAULT_PAGE_NUM;
         }
@@ -48,15 +50,17 @@ public class MerchantService {
         }
 
         int offset = (pageNum - 1) * pageSize;
-        return merchantMapper.selectPage(offset, pageSize);
+        return merchantMapper.selectPage(offset, pageSize, keyword, status);
     }
 
     /**
      * 获取商户总数
+     * @param keyword 搜索关键词（可空）
+     * @param status 状态过滤（可空）
      * @return 总数
      */
-    public Long getMerchantCount() {
-        int count = merchantMapper.countAll();
+    public Long getMerchantCount(String keyword, Integer status) {
+        int count = merchantMapper.countAll(keyword, status);
         return (long) count;
     }
 
@@ -117,6 +121,9 @@ public class MerchantService {
         if (request.getContactPhone() == null || request.getContactPhone().trim().isEmpty()) {
             throw new BusinessException(ErrorCode.INVALID_REQUEST, "联系电话不能为空");
         }
+        if (!request.getContactPhone().matches("^1[3-9]\\d{9}$")) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "联系电话格式不正确，请输入正确的11位手机号");
+        }
 
         // 创建商户
         Merchant merchant = new Merchant();
@@ -127,8 +134,15 @@ public class MerchantService {
         merchant.setContactEmail(request.getContactEmail());
         merchant.setWifiName(request.getWifiName());
         merchant.setWifiPassword(request.getWifiPassword());
+        merchant.setAddress(request.getAddress());
+        merchant.setBannerImages(request.getBannerImages());
+        merchant.setShopImages(request.getShopImages());
+        merchant.setBossWechat(request.getBossWechat());
+        merchant.setBusinessHours(request.getBusinessHours());
+        merchant.setReferrerCode(request.getReferrerCode());
+        merchant.setDescription(request.getDescription());
         merchant.setAuditStatus(Constants.MERCHANT_AUDIT_PENDING);  // 待审核
-        merchant.setStatus(Constants.MERCHANT_STATUS_NORMAL);
+        merchant.setStatus(request.getStatus() != null ? request.getStatus() : Constants.MERCHANT_STATUS_NORMAL);
         merchant.setCreatedAt(LocalDateTime.now());
         merchant.setUpdatedAt(LocalDateTime.now());
 
@@ -171,6 +185,9 @@ public class MerchantService {
             merchant.setContactName(request.getContactName());
         }
         if (request.getContactPhone() != null && !request.getContactPhone().isEmpty()) {
+            if (!request.getContactPhone().matches("^1[3-9]\\d{9}$")) {
+                throw new BusinessException(ErrorCode.INVALID_REQUEST, "联系电话格式不正确，请输入正确的11位手机号");
+            }
             merchant.setContactPhone(request.getContactPhone());
         }
         if (request.getContactEmail() != null) {
@@ -202,8 +219,14 @@ public class MerchantService {
         if (request.getReferrerCode() != null) {
             merchant.setReferrerCode(request.getReferrerCode());
         }
+        if (request.getDescription() != null) {
+            merchant.setDescription(request.getDescription());
+        }
 
-        // 管理员专属字段：套餐 ID、存储限制（商户角色传值也会被越权校验放行，但不影响安全）
+        // 管理员专属字段：状态、套餐 ID、存储限制（商户角色传值会被忽略）
+        if (request.getStatus() != null && !ownershipChecker.isCurrentMerchant()) {
+            merchant.setStatus(request.getStatus());
+        }
         if (request.getPlanId() != null) {
             merchant.setPlanId(request.getPlanId());
         }

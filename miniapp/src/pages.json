@@ -9,7 +9,7 @@
     {
       "path": "pages/index/index",
       "style": {
-        "navigationBarTitleText": "碰一碰好评卡",
+        "navigationBarTitleText": "晓居智能",
         "navigationStyle": "custom"
       }
     },
@@ -43,11 +43,41 @@
       "style": {
         "navigationBarTitleText": "优惠券"
       }
+    },
+    {
+      "path": "pages/user/mine",
+      "style": {
+        "navigationBarTitleText": "晓居智能"
+      }
+    },
+    {
+      "path": "pages/user/devices",
+      "style": {
+        "navigationBarTitleText": "我的设备"
+      }
+    },
+    {
+      "path": "pages/user/scan-history",
+      "style": {
+        "navigationBarTitleText": "扫描记录"
+      }
+    },
+    {
+      "path": "pages/user/promotion-history",
+      "style": {
+        "navigationBarTitleText": "推广记录"
+      }
+    },
+    {
+      "path": "pages/user/settings",
+      "style": {
+        "navigationBarTitleText": "设置"
+      }
     }
   ],
   "globalStyle": {
     "navigationBarTextStyle": "black",
-    "navigationBarTitleText": "碰一碰好评卡",
+    "navigationBarTitleText": "晓居智能",
     "navigationBarBackgroundColor": "#ffffff",
     "backgroundColor": "#f5f6fa"
   }

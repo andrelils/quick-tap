@@ -61,7 +61,7 @@ public class DeviceController {
         // 将扁平设备列表按名称+systemCode 分组为设备套
         List<Map<String, Object>> sets = groupDevicesToSets(data.getList());
         PageResponse<Map<String, Object>> result = PageResponse.of(
-                sets, pageNum, pageSize, data.getTotal());
+                sets, pageNum, pageSize, deviceService.countDeviceSets());
         return ApiResponse.success("获取成功", result);
     }
 

@@ -98,9 +98,15 @@ public class AiConfigService {
         AiConfig config;
 
         if (existing != null) {
-            existing.setTextModel(request.getTextModel());
-            existing.setImageModel(request.getImageModel());
-            existing.setVideoModel(request.getVideoModel());
+            if (request.getTextModel() != null) {
+                existing.setTextModel(request.getTextModel());
+            }
+            if (request.getImageModel() != null) {
+                existing.setImageModel(request.getImageModel());
+            }
+            if (request.getVideoModel() != null) {
+                existing.setVideoModel(request.getVideoModel());
+            }
             if (request.getApiKey() != null && !request.getApiKey().isEmpty()) {
                 existing.setApiKey(encryptUtil.encrypt(request.getApiKey()));
             }
@@ -109,6 +115,15 @@ public class AiConfigService {
             }
             if (request.getEnabled() != null) {
                 existing.setEnabled(request.getEnabled());
+            }
+            if (request.getTextPrompt() != null) {
+                existing.setTextPrompt(request.getTextPrompt());
+            }
+            if (request.getImagePrompt() != null) {
+                existing.setImagePrompt(request.getImagePrompt());
+            }
+            if (request.getVideoPrompt() != null) {
+                existing.setVideoPrompt(request.getVideoPrompt());
             }
             existing.setUpdatedAt(LocalDateTime.now());
             aiConfigMapper.update(existing);
@@ -122,6 +137,9 @@ public class AiConfigService {
                     .apiKey(request.getApiKey() != null ? encryptUtil.encrypt(request.getApiKey()) : null)
                     .apiSecret(request.getApiSecret() != null ? encryptUtil.encrypt(request.getApiSecret()) : null)
                     .enabled(request.getEnabled() != null ? request.getEnabled() : true)
+                    .textPrompt(request.getTextPrompt())
+                    .imagePrompt(request.getImagePrompt())
+                    .videoPrompt(request.getVideoPrompt())
                     .createdAt(LocalDateTime.now())
                     .updatedAt(LocalDateTime.now())
                     .build();
@@ -152,14 +170,23 @@ public class AiConfigService {
                     .apiKey(request.getApiKey() != null ? encryptUtil.encrypt(request.getApiKey()) : null)
                     .apiSecret(request.getApiSecret() != null ? encryptUtil.encrypt(request.getApiSecret()) : null)
                     .enabled(request.getEnabled() != null ? request.getEnabled() : false)
+                    .textPrompt(request.getTextPrompt())
+                    .imagePrompt(request.getImagePrompt())
+                    .videoPrompt(request.getVideoPrompt())
                     .createdAt(LocalDateTime.now())
                     .updatedAt(LocalDateTime.now())
                     .build();
             aiConfigMapper.insert(config);
         } else {
-            config.setTextModel(request.getTextModel());
-            config.setImageModel(request.getImageModel());
-            config.setVideoModel(request.getVideoModel());
+            if (request.getTextModel() != null) {
+                config.setTextModel(request.getTextModel());
+            }
+            if (request.getImageModel() != null) {
+                config.setImageModel(request.getImageModel());
+            }
+            if (request.getVideoModel() != null) {
+                config.setVideoModel(request.getVideoModel());
+            }
             if (request.getApiKey() != null && !request.getApiKey().isEmpty()) {
                 config.setApiKey(encryptUtil.encrypt(request.getApiKey()));
             }
@@ -168,6 +195,15 @@ public class AiConfigService {
             }
             if (request.getEnabled() != null) {
                 config.setEnabled(request.getEnabled());
+            }
+            if (request.getTextPrompt() != null) {
+                config.setTextPrompt(request.getTextPrompt());
+            }
+            if (request.getImagePrompt() != null) {
+                config.setImagePrompt(request.getImagePrompt());
+            }
+            if (request.getVideoPrompt() != null) {
+                config.setVideoPrompt(request.getVideoPrompt());
             }
             config.setUpdatedAt(LocalDateTime.now());
             aiConfigMapper.update(config);
@@ -230,8 +266,8 @@ public class AiConfigService {
         if (pageSize > 100) pageSize = 100;
         int offset = (pageNum - 1) * pageSize;
 
-        List<Merchant> merchants = merchantMapper.selectPage(offset, pageSize);
-        long total = merchantMapper.countAll();
+        List<Merchant> merchants = merchantMapper.selectPage(offset, pageSize, null, null);
+        long total = merchantMapper.countAll(null, null);
 
         List<Map<String, Object>> list = merchants.stream().map(m -> {
             Map<String, Object> item = new HashMap<>();
@@ -295,6 +331,9 @@ public class AiConfigService {
                 .imageModel(config.getImageModel())
                 .videoModel(config.getVideoModel())
                 .enabled(config.getEnabled())
+                .textPrompt(config.getTextPrompt())
+                .imagePrompt(config.getImagePrompt())
+                .videoPrompt(config.getVideoPrompt())
                 .createdAt(config.getCreatedAt())
                 .updatedAt(config.getUpdatedAt())
                 .build();

@@ -480,4 +480,57 @@ public class MerchantQuotaController {
 
         return ApiResponse.success(result);
     }
+
+    /**
+     * 管理员端：分页获取所有商户的额度列表（含套餐名、存储、AI生成额度与用量）
+     */
+    @GetMapping("/admin/merchant-quota/list")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
+    public ApiResponse<Map<String, Object>> getAdminQuotaList(
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer pageSize,
+            @RequestParam(required = false) String keyword) {
+        log.info("获取商户额度列表: page={}, pageSize={}, keyword={}", page, pageSize, keyword);
+        Map<String, Object> result = merchantQuotaService.getAdminQuotaList(page, pageSize, keyword);
+        return ApiResponse.success(result);
+    }
+
+    /**
+     * 管理员端：调整商户额度（存储上限 / AI生成额度），0 表示不限
+     * body: { storageLimit?: number, textQuota?: number, imageQuota?: number, videoQuota?: number }
+     */
+    @PostMapping("/admin/merchant-quota/{merchantId}/adjust")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
+    public ApiResponse<Map<String, Object>> adjustQuota(
+            @PathVariable Integer merchantId,
+            @RequestBody(required = false) Map<String, Object> body) {
+        log.info("调整商户额度: merchantId={}, body={}", merchantId, body);
+        Long storageLimit = body == null ? null : toLong(body.get("storageLimit"));
+        Long textQuota = body == null ? null : toLong(body.get("textQuota"));
+        Long imageQuota = body == null ? null : toLong(body.get("imageQuota"));
+        Long videoQuota = body == null ? null : toLong(body.get("videoQuota"));
+
+        if (storageLimit == null && textQuota == null && imageQuota == null && videoQuota == null) {
+            return ApiResponse.badRequest("请至少提供一项要调整的额度");
+        }
+
+        merchantQuotaService.adjustQuota(merchantId, storageLimit, textQuota, imageQuota, videoQuota);
+
+        Map<String, Object> result = new java.util.HashMap<>();
+        result.put("merchantId", merchantId);
+        result.put("message", "额度调整成功");
+        return ApiResponse.success(result);
+    }
+
+    private Long toLong(Object value) {
+        if (value == null) return null;
+        if (value instanceof Number) return ((Number) value).longValue();
+        String s = String.valueOf(value).trim();
+        if (s.isEmpty()) return null;
+        try {
+            return Long.parseLong(s);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
 }

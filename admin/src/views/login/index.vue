@@ -7,7 +7,7 @@
             <div class="brand-logo">
               <LikeOutlined />
             </div>
-            <h1 class="brand-title">碰一碰好评卡</h1>
+            <h1 class="brand-title">{{ APP_NAME }}</h1>
             <p class="brand-desc">NFC智能推广 · 一键好评 · AI创作</p>
           </div>
           <div class="feature-list">
@@ -86,6 +86,7 @@
 import { ref, reactive } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { message } from 'ant-design-vue'
+import { APP_NAME } from '@/config/app'
 import { 
   UserOutlined, 
   LockOutlined, 

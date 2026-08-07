@@ -5,6 +5,15 @@
       <div class="page-desc">查看您的套餐使用情况和购买记录</div>
     </div>
 
+    <a-alert
+      v-if="!currentMerchantId"
+      type="info"
+      show-icon
+      message="当前账号未绑定商家"
+      description="请使用商家账号登录，或在顶栏切换商家后查看本页数据"
+      style="margin-bottom: 16px"
+    />
+
     <div class="current-plan-card card-wrapper" v-if="quotaData.currentPlan">
       <div class="plan-info">
         <div class="plan-badge" :class="getPlanLevelClass(quotaData.currentPlan.planLevel)">
@@ -169,6 +178,10 @@
               <span class="feature-label">图片生成</span>
               <span class="feature-value">{{ plan.imageQuota ? plan.imageQuota + ' 次/月' : '不限' }}</span>
             </div>
+            <div class="feature-item">
+              <span class="feature-label">视频生成</span>
+              <span class="feature-value">{{ plan.videoQuota ? plan.videoQuota + ' 次/月' : '不限' }}</span>
+            </div>
           </div>
           <a-button 
             type="primary" 
@@ -195,8 +208,18 @@ import {
   CrownOutlined
 } from '@ant-design/icons-vue'
 import { getMyQuota, getMyOrders } from '@/api/merchant'
-import { getPlanList } from '@/api/marketing'
+import { getPlanList, createOrder, payOrder } from '@/api/marketing'
+import { useUserStore } from '@/store/user'
+import { useAppStore } from '@/store/app'
 import { formatFileSize } from '@/utils/format'
+
+const userStore = useUserStore()
+const appStore = useAppStore()
+
+// 当前可用的商家ID：商家账号取自身绑定，管理员取全局选择的商家
+const currentMerchantId = computed(() => {
+  return userStore.userInfo?.merchantId || appStore.merchantId || ''
+})
 
 const quotaData = ref({})
 const loading = ref(false)
@@ -244,7 +267,12 @@ const imageQuotaPercent = computed(() => {
 const loadQuota = async () => {
   loading.value = true
   try {
-    const res = await getMyQuota()
+    // 无绑定商家时不请求接口，避免"缺少 merchantId"报错
+    if (!currentMerchantId.value) {
+      quotaData.value = {}
+      return
+    }
+    const res = await getMyQuota({ merchantId: currentMerchantId.value })
     const data = {
       storage: {
         usedBytes: (res?.storage?.used || 0) * 1024 * 1024,
@@ -280,9 +308,19 @@ const loadOrders = async () => {
   try {
     const res = await getMyOrders({
       page: orderPagination.current,
-      pageSize: orderPagination.pageSize
+      pageSize: orderPagination.pageSize,
+      merchantId: currentMerchantId.value || undefined
     })
-    orderList.value = res.list || []
+    orderList.value = (res.list || []).map(o => ({
+      id: o.id,
+      order_no: o.order_no ?? o.orderNo ?? '-',
+      plan_name: o.plan_name ?? o.planName ?? '-',
+      amount: o.amount ?? 0,
+      status: o.status ?? '',
+      pay_type: o.pay_type ?? o.payType ?? '在线支付',
+      created_at: o.created_at ?? o.createdAt,
+      plan_level: o.plan_level ?? o.planLevel
+    }))
     orderPagination.total = res.total || 0
   } catch (e) {
     console.error('加载订单列表失败', e)
@@ -300,6 +338,7 @@ const loadPlans = async () => {
       deviceCount: p.deviceCount || p.device_count || 1,
       textQuota: p.textQuota || p.text_quota || 0,
       imageQuota: p.imageQuota || p.image_quota || 0,
+      videoQuota: p.videoQuota || p.video_quota || 0,
       storageLimit: p.storageLimit || p.storage_limit || 100
     }))
   } catch (e) {
@@ -307,8 +346,29 @@ const loadPlans = async () => {
   }
 }
 
-const handlePurchase = (plan) => {
-  message.info('支付功能开发中，请联系管理员开通')
+const handlePurchase = async (plan) => {
+  if (!currentMerchantId.value) {
+    message.warning('当前账号未绑定商家，无法购买套餐')
+    return
+  }
+  // 模拟收银台：创建订单 -> 支付 -> 后端自动生效套餐
+  try {
+    const order = await createOrder({
+      merchantId: currentMerchantId.value,
+      planId: plan.id,
+      amount: plan.price
+    })
+    if (!order?.id) {
+      throw new Error('订单创建失败')
+    }
+    await payOrder(order.id)
+    message.success('支付成功，套餐已生效')
+    showPlanModal.value = false
+    loadQuota()
+    loadOrders()
+  } catch (e) {
+    console.error('购买失败', e)
+  }
 }
 
 const formatTime = (time) => {
@@ -329,12 +389,13 @@ const getPlanTagColor = (level) => {
 
 const getOrderStatus = (status) => {
   const map = {
-    0: { status: 'warning', text: '待支付' },
-    1: { status: 'success', text: '已支付' },
-    2: { status: 'default', text: '已退款' },
-    3: { status: 'error', text: '已取消' }
+    pending: { status: 'warning', text: '待支付' },
+    paid: { status: 'success', text: '已支付' },
+    refunded: { status: 'default', text: '已退款' },
+    cancelled: { status: 'error', text: '已取消' },
+    expired: { status: 'default', text: '已过期' }
   }
-  return map[status] || { status: 'default', text: '未知' }
+  return map[status] || { status: 'default', text: status || '未知' }
 }
 
 onMounted(() => {

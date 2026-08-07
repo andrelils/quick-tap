@@ -99,4 +99,8 @@
         SELECT COUNT(*) FROM device
     </select>
 
+    <select id="countSets" resultType="long">
+        SELECT COUNT(DISTINCT CONCAT(COALESCE(name, ''), '|', COALESCE(system_code, ''))) FROM device
+    </select>
+
 </mapper>
