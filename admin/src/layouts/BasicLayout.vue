@@ -269,14 +269,6 @@ const loadMerchantList = async () => {
   try {
     const res = await getMerchantList({ page: 1, pageSize: 100 })
     merchantList.value = res.list || []
-    // Restore current merchant object from persisted id
-    const persistedId = userStore.currentMerchantId
-    if (persistedId && !appStore.currentMerchant) {
-      const merchant = merchantList.value.find(m => String(m.id) === String(persistedId))
-      if (merchant) {
-        appStore.setCurrentMerchant(merchant)
-      }
-    }
   } catch (e) {
     console.error('加载商家列表失败', e)
   }

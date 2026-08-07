@@ -151,7 +151,10 @@
           </template>
           <template v-else-if="column.key === 'tags'">
             <div class="tags-wrapper">
-              <a-tag v-for="tag in getTagList(record.tags)" :key="tag" color="default">{{ tag }}</a-tag>
+              <template v-if="getTagList(record.tags).length">
+                <a-tag v-for="tag in getTagList(record.tags)" :key="tag" color="default">{{ tag }}</a-tag>
+              </template>
+              <span v-else>-</span>
             </div>
           </template>
           <template v-else-if="column.key === 'status'">
@@ -531,7 +534,15 @@ const getTagList = (tags) => {
   if (!tags) return []
   if (Array.isArray(tags)) return tags
   if (typeof tags === 'string') {
-    return tags.split(',').filter(t => t.trim())
+    const t = tags.trim()
+    if (!t) return []
+    try {
+      const parsed = JSON.parse(t)
+      if (Array.isArray(parsed)) return parsed
+    } catch (e) {
+      // 非 JSON，按逗号分隔处理
+    }
+    return t.split(',').filter(x => x.trim())
   }
   return []
 }
