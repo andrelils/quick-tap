@@ -11,3 +11,7 @@ export const bindDevice = (deviceId, userId) => {
 export const getDeviceInfo = (deviceNo) => {
   return request.get(`/device/info/${deviceNo}`)
 }
+
+export const checkDeviceInfo = () => {
+  return request.get('/device/check')
+}

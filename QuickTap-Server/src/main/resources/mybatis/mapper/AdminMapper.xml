@@ -39,6 +39,35 @@
         SELECT * FROM admin ORDER BY created_at DESC LIMIT #{limit} OFFSET #{offset}
     </select>
 
+    <select id="selectByKeyword" resultMap="AdminResultMap">
+        SELECT * FROM admin
+        WHERE 1=1
+        <if test="params.keyword != null and params.keyword != ''">
+            AND (username LIKE #{params.keyword} OR nickname LIKE #{params.keyword} OR phone LIKE #{params.keyword})
+        </if>
+        <if test="params.role != null and params.role != ''">
+            AND role = #{params.role}
+        </if>
+        <if test="params.status != null">
+            AND status = #{params.status}
+        </if>
+        ORDER BY created_at DESC LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countByKeyword" resultType="long">
+        SELECT COUNT(*) FROM admin
+        WHERE 1=1
+        <if test="params.keyword != null and params.keyword != ''">
+            AND (username LIKE #{params.keyword} OR nickname LIKE #{params.keyword} OR phone LIKE #{params.keyword})
+        </if>
+        <if test="params.role != null and params.role != ''">
+            AND role = #{params.role}
+        </if>
+        <if test="params.status != null">
+            AND status = #{params.status}
+        </if>
+    </select>
+
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO admin (username, password, nickname, avatar, email, phone, role, merchant_id, status, user_code, created_at, updated_at)
         VALUES (#{username}, #{password}, #{nickname}, #{avatar}, #{email}, #{phone}, #{role}, #{merchantId}, #{status}, #{userCode}, NOW(), NOW())

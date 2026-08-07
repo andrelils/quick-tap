@@ -114,7 +114,7 @@
     </view>
 
     <view class="footer-info">
-      <text class="version">晓居智能 v1.0.0</text>
+      <text class="version">碰一碰好评卡 v1.0.0</text>
     </view>
   </view>
 </template>
@@ -236,7 +236,7 @@ const goToSettings = () => {
 const goToAbout = () => {
   uni.showModal({
     title: '关于我们',
-    content: '晓居智能系统 v1.0.0\n\nNFC智能推广，一键好评，助力商家成长',
+    content: '碰一碰好评卡系统 v1.0.0\n\nNFC智能推广，一键好评，助力商家成长',
     showCancel: false
   })
 }

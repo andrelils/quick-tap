@@ -35,4 +35,24 @@ public class AdminUpdateRequest {
      * 状态（1=启用, 0=禁用）
      */
     private Integer status;
+
+    /**
+     * 头像 URL
+     */
+    private String avatar;
+
+    /**
+     * 昵称
+     */
+    private String nickname;
+
+    /**
+     * 邮箱
+     */
+    private String email;
+
+    /**
+     * 电话
+     */
+    private String phone;
 }

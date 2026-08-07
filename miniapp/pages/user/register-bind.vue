@@ -198,7 +198,9 @@ const handleSubmit = async () => {
     })
     
     setTimeout(() => {
-      uni.navigateBack()
+      uni.reLaunch({
+        url: '/pages/index/index'
+      })
     }, 1500)
   } catch (e) {
     console.error('注册绑定失败', e)

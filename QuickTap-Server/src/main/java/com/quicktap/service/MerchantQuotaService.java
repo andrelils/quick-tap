@@ -7,6 +7,7 @@ import com.quicktap.exception.BusinessException;
 import com.quicktap.mapper.AiGenerateRecordMapper;
 import com.quicktap.mapper.MerchantMapper;
 import com.quicktap.mapper.PlanMapper;
+import com.quicktap.common.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -32,7 +33,7 @@ public class MerchantQuotaService {
     public boolean checkTextQuota(Integer merchantId) {
         Merchant merchant = merchantMapper.selectById(merchantId);
         if (merchant == null) {
-            throw new BusinessException(404, "商户不存在");
+            throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "商户不存在");
         }
         Plan plan = getPlanOrNull(merchant);
         if (plan == null) return false;
@@ -45,7 +46,7 @@ public class MerchantQuotaService {
     public boolean checkImageQuota(Integer merchantId) {
         Merchant merchant = merchantMapper.selectById(merchantId);
         if (merchant == null) {
-            throw new BusinessException(404, "商户不存在");
+            throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "商户不存在");
         }
         Plan plan = getPlanOrNull(merchant);
         if (plan == null) return false;
@@ -58,7 +59,7 @@ public class MerchantQuotaService {
     public boolean checkVideoQuota(Integer merchantId) {
         Merchant merchant = merchantMapper.selectById(merchantId);
         if (merchant == null) {
-            throw new BusinessException(404, "商户不存在");
+            throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "商户不存在");
         }
         Plan plan = getPlanOrNull(merchant);
         if (plan == null) return false;
@@ -71,7 +72,7 @@ public class MerchantQuotaService {
     public boolean checkStorageQuota(Integer merchantId, long requiredSize) {
         Merchant merchant = merchantMapper.selectById(merchantId);
         if (merchant == null) {
-            throw new BusinessException(404, "商户不存在");
+            throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "商户不存在");
         }
         long availableSpace = (merchant.getStorageLimit() - merchant.getStorageUsed()) * 1024 * 1024;
         log.info("检查存储配额: merchantId={}, limit={}MB, used={}MB, required={}B",
@@ -124,11 +125,11 @@ public class MerchantQuotaService {
     public void updateStorageUsage(Integer merchantId, long sizeInMB) {
         Merchant merchant = merchantMapper.selectById(merchantId);
         if (merchant == null) {
-            throw new BusinessException(404, "商户不存在");
+            throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "商户不存在");
         }
         long newUsedStorage = merchant.getStorageUsed() + sizeInMB;
         if (newUsedStorage > merchant.getStorageLimit()) {
-            throw new BusinessException(400, "存储空间不足");
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "存储空间不足");
         }
         merchant.setStorageUsed(newUsedStorage);
         merchantMapper.update(merchant);
@@ -138,7 +139,7 @@ public class MerchantQuotaService {
     public void reduceStorageUsage(Integer merchantId, long sizeInMB) {
         Merchant merchant = merchantMapper.selectById(merchantId);
         if (merchant == null) {
-            throw new BusinessException(404, "商户不存在");
+            throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "商户不存在");
         }
         long newUsedStorage = Math.max(0, merchant.getStorageUsed() - sizeInMB);
         merchant.setStorageUsed(newUsedStorage);
@@ -153,15 +154,15 @@ public class MerchantQuotaService {
     public void changePlan(Integer merchantId, Integer newPlanId) {
         Merchant merchant = merchantMapper.selectById(merchantId);
         if (merchant == null) {
-            throw new BusinessException(404, "商户不存在");
+            throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "商户不存在");
         }
         Plan newPlan = planMapper.selectById(newPlanId);
         if (newPlan == null) {
-            throw new BusinessException(404, "套餐不存在");
+            throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "套餐不存在");
         }
         Plan oldPlan = getPlanOrNull(merchant);
         if (newPlan.getStorageLimit() < merchant.getStorageUsed()) {
-            throw new BusinessException(400, "新套餐的存储空间不足以容纳当前已使用的空间");
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "新套餐的存储空间不足以容纳当前已使用的空间");
         }
         merchant.setPlanId(newPlanId);
         merchantMapper.update(merchant);
@@ -172,7 +173,7 @@ public class MerchantQuotaService {
     public Map<String, Object> getQuotaDetails(Integer merchantId) {
         Merchant merchant = merchantMapper.selectById(merchantId);
         if (merchant == null) {
-            throw new BusinessException(404, "商户不存在");
+            throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "商户不存在");
         }
         Plan plan = getPlanOrNull(merchant);
         Map<String, Object> details = new HashMap<>();

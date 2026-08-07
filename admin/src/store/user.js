@@ -5,7 +5,8 @@ import { login as loginApi, getUserInfo, logout as logoutApi } from '@/api/auth'
 export const useUserStore = defineStore('user', () => {
   const token = ref(localStorage.getItem('token') || '')
   const userInfo = ref(JSON.parse(localStorage.getItem('userInfo') || 'null'))
-  const currentMerchantId = ref(localStorage.getItem('currentMerchantId') || '')
+  // 商家选择不持久化，刷新后重置为空（避免残留 id 显示问题）
+  const currentMerchantId = ref('')
 
   const isLoggedIn = computed(() => !!token.value)
   const isAdmin = computed(() => userInfo.value?.role === 'super_admin' || userInfo.value?.role === 'admin')
@@ -25,20 +26,24 @@ export const useUserStore = defineStore('user', () => {
 
   const setCurrentMerchantId = (id) => {
     currentMerchantId.value = id
-    if (id) {
-      localStorage.setItem('currentMerchantId', String(id))
-    } else {
-      localStorage.removeItem('currentMerchantId')
-    }
   }
 
   const login = async (loginForm) => {
     const res = await loginApi(loginForm)
+    // 后端返回的token和用户信息
     if (res.token) {
       setToken(res.token)
     }
-    if (res.userInfo) {
-      setUserInfo(res.userInfo)
+    // 组建userInfo对象（包含后端返回的用户信息）
+    const userInfo = {
+      token: res.token,
+      userId: res.userId,
+      username: res.username,
+      role: res.role,
+      expiresIn: res.expiresIn
+    }
+    if (Object.keys(userInfo).length > 0) {
+      setUserInfo(userInfo)
     }
     return res
   }
@@ -64,6 +69,11 @@ export const useUserStore = defineStore('user', () => {
   }
 
   const hasPermission = (perm) => {
+    // 超级管理员和管理员拥有所有权限
+    if (userInfo.value?.role === 'super_admin' || userInfo.value?.role === 'admin') {
+      return true
+    }
+
     const perms = permissions.value
     if (!perms || perms.length === 0) return false
     if (perms.includes('*')) return true

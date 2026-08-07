@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import NProgress from 'nprogress'
 import { useUserStore } from '@/store/user'
+import { canAccessRoute, getRedirectPath, logAccessDenied } from '@/utils/routerGuard'
 
 const routes = [
   {
@@ -201,33 +202,36 @@ router.beforeEach((to, from, next) => {
 
   const userStore = useUserStore()
 
-  if (to.meta.public) {
+  // Check if route is accessible
+  const accessResult = canAccessRoute(to, userStore)
+
+  if (accessResult.allowed) {
     next()
   } else {
-    if (userStore.isLoggedIn) {
-      if (to.meta.superAdminOnly && !userStore.isSuperAdmin) {
-        next({ path: '/dashboard' })
-      } else if (to.name === 'MerchantDetail' && userStore.isMerchant) {
-        // 商家角色只能访问自己的商家详情页
-        const myId = String(userStore.userInfo?.merchantId || '')
-        const targetId = String(to.params.id || '')
-        if (myId && targetId === myId) {
-          next()
-        } else {
-          next({ path: '/dashboard' })
-        }
-      } else {
-        next()
-      }
-    } else {
+    // Log access denied event
+    logAccessDenied({
+      reason: accessResult.reason,
+      routeName: to.name,
+      role: userStore.userInfo?.role,
+      userId: userStore.userInfo?.id
+    })
+
+    // Redirect to appropriate page
+    const redirectPath = getRedirectPath(accessResult.reason)
+
+    if (accessResult.reason === 'NOT_LOGGED_IN') {
+      // Redirect to login with original URL as redirect target
       next({ path: '/login', query: { redirect: to.fullPath } })
+    } else {
+      // Redirect to dashboard or accessible page
+      next({ path: redirectPath })
     }
   }
 })
 
 router.afterEach((to) => {
   NProgress.done()
-  document.title = to.meta.title ? `${to.meta.title} - 晓居智能管理系统` : '晓居智能管理系统'
+  document.title = to.meta.title ? `${to.meta.title} - 碰一碰好评卡管理系统` : '碰一碰好评卡管理系统'
 })
 
 export default router

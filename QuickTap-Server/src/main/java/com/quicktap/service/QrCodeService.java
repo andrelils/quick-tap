@@ -8,6 +8,7 @@ import com.quicktap.entity.QrCode;
 import com.quicktap.exception.BusinessException;
 import com.quicktap.mapper.QrCodeMapper;
 import com.quicktap.utils.QrCodeGeneratorUtil;
+import com.quicktap.common.ErrorCode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
@@ -110,7 +111,7 @@ public class QrCodeService {
 
         List<QrCode> qrCodes = qrCodeMapper.selectByDeviceId(request.getDeviceId());
         if (qrCodes.isEmpty()) {
-            throw new BusinessException("该设备未生成二维码");
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "该设备未生成二维码");
         }
 
         // 绑定第一个二维码
@@ -130,7 +131,7 @@ public class QrCodeService {
     public QrCodeDTO getById(Long id) {
         QrCode qrCode = qrCodeMapper.selectById(id);
         if (qrCode == null) {
-            throw new BusinessException("二维码不存在");
+            throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "二维码不存在");
         }
         return convertToDTO(qrCode);
     }
@@ -142,7 +143,7 @@ public class QrCodeService {
     public QrCodeDTO getByCode(String code) {
         QrCode qrCode = qrCodeMapper.selectByCode(code);
         if (qrCode == null) {
-            throw new BusinessException("二维码不存在");
+            throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "二维码不存在");
         }
         return convertToDTO(qrCode);
     }
@@ -168,7 +169,7 @@ public class QrCodeService {
 
         int deleted = qrCodeMapper.deleteById(id);
         if (deleted == 0) {
-            throw new BusinessException("二维码删除失败");
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "二维码删除失败");
         }
     }
 

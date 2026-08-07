@@ -42,4 +42,6 @@ public class CouponCreateRequest {
 
     @NotBlank(message = "跳转链接不能为空")
     private String link;  // 第三方平台跳转链接
+
+    private String description;  // 使用说明（选填）
 }

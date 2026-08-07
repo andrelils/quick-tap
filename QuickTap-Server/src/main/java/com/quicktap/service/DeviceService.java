@@ -5,7 +5,9 @@ import com.quicktap.mapper.DeviceMapper;
 import com.quicktap.dto.PageResponse;
 import com.quicktap.dto.DeviceDTO;
 import com.quicktap.exception.BusinessException;
+import com.quicktap.security.OwnershipChecker;
 import com.quicktap.security.SecurityUtil;
+import com.quicktap.common.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,6 +29,9 @@ public class DeviceService {
 
     @Autowired
     private SecurityUtil securityUtil;
+
+    @Autowired
+    private OwnershipChecker ownershipChecker;
 
     /**
      * 获取设备列表（分页）
@@ -117,6 +122,11 @@ public class DeviceService {
             throw new IllegalArgumentException("设备不存在");
         }
 
+        // 越权校验：商户只能操作自己的设备
+        if (existing.getMerchantId() != null) {
+            ownershipChecker.checkMerchant(existing.getMerchantId().longValue());
+        }
+
         if (device.getDeviceNo() != null && !device.getDeviceNo().isEmpty()) {
             existing.setDeviceNo(device.getDeviceNo());
         }
@@ -149,6 +159,10 @@ public class DeviceService {
         if (existing == null) {
             throw new IllegalArgumentException("设备不存在");
         }
+        // 越权校验：商户只能删除自己的设备
+        if (existing.getMerchantId() != null) {
+            ownershipChecker.checkMerchant(existing.getMerchantId().longValue());
+        }
         deviceMapper.deleteById(id);
         log.info("删除设备成功, id: {}", id);
     }
@@ -158,6 +172,10 @@ public class DeviceService {
      */
     public Device disableDevice(Integer id) {
         Device device = getDeviceById(id);
+        // 越权校验：商户只能禁用自己的设备
+        if (device.getMerchantId() != null) {
+            ownershipChecker.checkMerchant(device.getMerchantId().longValue());
+        }
         device.setStatus(0);
         deviceMapper.update(device);
         log.info("禁用设备成功, id: {}", id);
@@ -169,6 +187,10 @@ public class DeviceService {
      */
     public Device enableDevice(Integer id) {
         Device device = getDeviceById(id);
+        // 越权校验：商户只能启用自己的设备
+        if (device.getMerchantId() != null) {
+            ownershipChecker.checkMerchant(device.getMerchantId().longValue());
+        }
         device.setStatus(1);
         deviceMapper.update(device);
         log.info("启用设备成功, id: {}", id);
@@ -187,7 +209,7 @@ public class DeviceService {
                 .map(req -> {
                     Device device = deviceMapper.selectByDeviceNo(req.getDeviceNo());
                     if (device != null) {
-                        throw new BusinessException("设备编号已存在: " + req.getDeviceNo());
+                        throw new BusinessException(ErrorCode.DUPLICATE_RESOURCE, "设备编号已存在: " + req.getDeviceNo());
                     }
                     return Device.builder()
                             .deviceNo(req.getDeviceNo())
@@ -231,17 +253,17 @@ public class DeviceService {
 
         Device device = deviceMapper.selectById(deviceId.intValue());
         if (device == null) {
-            throw new BusinessException("设备不存在");
+            throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "设备不存在");
         }
 
         if (!device.getMerchantId().equals(merchantId.intValue())) {
-            throw new BusinessException("无权操作该设备");
+            throw new BusinessException(ErrorCode.FORBIDDEN, "无权操作该设备");
         }
 
         // 检查二维码是否被其他设备绑定
         Device boundDevice = deviceMapper.selectByBindQrCodeId(qrCodeId);
         if (boundDevice != null && !boundDevice.getId().equals(device.getId())) {
-            throw new BusinessException("该二维码已被其他设备绑定");
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "该二维码已被其他设备绑定");
         }
 
         device.setBindQrCodeId(qrCodeId);
@@ -260,11 +282,11 @@ public class DeviceService {
 
         Device device = deviceMapper.selectById(deviceId.intValue());
         if (device == null) {
-            throw new BusinessException("设备不存在");
+            throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "设备不存在");
         }
 
         if (!device.getMerchantId().equals(merchantId.intValue())) {
-            throw new BusinessException("无权操作该设备");
+            throw new BusinessException(ErrorCode.FORBIDDEN, "无权操作该设备");
         }
 
         device.setBindQrCodeId(null);

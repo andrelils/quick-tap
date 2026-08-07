@@ -12,6 +12,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.constraints.NotBlank;
+import java.util.Map;
 
 /**
  * 知识库内容管理控制器
@@ -22,7 +23,7 @@ import jakarta.validation.constraints.NotBlank;
 @RestController
 @RequestMapping("/api")
 @Validated
-@CrossOrigin(origins = "*", maxAge = 3600)
+
 @RequiredArgsConstructor
 public class CorpusController {
 
@@ -168,6 +169,59 @@ public class CorpusController {
     }
 
     /**
+     * 批量软删除（移入回收站）
+     * 前端 ai.js#batchDeleteCorpus 调用，支持 { ids: [...], permanent: false }
+     */
+    @PostMapping("/merchant/corpus/batch-delete")
+    @PreAuthorize("hasAnyRole('MERCHANT', 'ADMIN', 'SUPER_ADMIN')")
+    public ApiResponse<Map<String, Object>> batchDelete(@RequestBody java.util.Map<String, Object> body) {
+        @SuppressWarnings("unchecked")
+        java.util.List<String> ids = (java.util.List<String>) body.get("ids");
+        boolean permanent = Boolean.TRUE.equals(body.get("permanent"));
+        log.info("批量删除语料: count={}, permanent={}", ids == null ? 0 : ids.size(), permanent);
+
+        int success = permanent
+                ? corpusService.batchPermanentDelete(ids)
+                : corpusService.batchDelete(ids);
+
+        Map<String, Object> result = new java.util.HashMap<>();
+        result.put("total", ids == null ? 0 : ids.size());
+        result.put("success", success);
+        return ApiResponse.success("批量删除完成", result);
+    }
+
+    /**
+     * 批量恢复（从回收站恢复）
+     * 前端 ai.js#restoreCorpus 调用，body: { ids: [...] }
+     */
+    @PostMapping("/merchant/corpus/batch-restore")
+    @PreAuthorize("hasAnyRole('MERCHANT', 'ADMIN', 'SUPER_ADMIN')")
+    public ApiResponse<Map<String, Object>> batchRestore(@RequestBody java.util.Map<String, Object> body) {
+        @SuppressWarnings("unchecked")
+        java.util.List<String> ids = (java.util.List<String>) body.get("ids");
+        log.info("批量恢复语料: count={}", ids == null ? 0 : ids.size());
+
+        int success = corpusService.batchRestore(ids);
+        Map<String, Object> result = new java.util.HashMap<>();
+        result.put("total", ids == null ? 0 : ids.size());
+        result.put("success", success);
+        return ApiResponse.success("批量恢复完成", result);
+    }
+
+    /**
+     * 语料存储统计
+     * 前端 ai.js#getCorpusStorage 调用
+     */
+    @GetMapping("/merchant/corpus/storage")
+    @PreAuthorize("hasAnyRole('MERCHANT', 'ADMIN', 'SUPER_ADMIN')")
+    public ApiResponse<Map<String, Object>> getStorage(@RequestParam(required = false) Integer merchantId) {
+        Integer mid = resolveMerchantId(merchantId);
+        log.info("获取语料存储统计: merchantId={}", mid);
+        Map<String, Object> result = corpusService.getStorage(mid);
+        return ApiResponse.success("获取成功", result);
+    }
+
+    /**
      * 搜索知识库内容
      * 匹配 Node.js: GET /api//corpus/search
      */
@@ -191,8 +245,8 @@ public class CorpusController {
     public ApiResponse<PageResponse<Corpus>> getAllCorpus(
             @RequestParam(defaultValue = "1") Integer pageNum,
             @RequestParam(defaultValue = "10") Integer pageSize) {
-        log.info("获取所有知识库内容");
-        PageResponse<Corpus> result = PageResponse.empty(pageNum, pageSize);
+        log.info("获取所有知识库内容: pageNum={}, pageSize={}", pageNum, pageSize);
+        PageResponse<Corpus> result = corpusService.getAllCorpus(pageNum, pageSize);
         return ApiResponse.success("获取成功", result);
     }
 

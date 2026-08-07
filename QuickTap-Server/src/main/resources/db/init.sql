@@ -148,6 +148,8 @@ CREATE TABLE IF NOT EXISTS `coupon` (
   `start_time` DATETIME COMMENT '有效期开始',
   `end_time` DATETIME COMMENT '有效期结束',
   `status` TINYINT NOT NULL DEFAULT 1 COMMENT '状态: 1启用/0停用',
+  `link` VARCHAR(500) COMMENT '第三方平台跳转链接',
+  `description` VARCHAR(500) COMMENT '使用说明',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`),
@@ -231,6 +233,25 @@ CREATE TABLE IF NOT EXISTS `ai_generate_record` (
   KEY `idx_merchant_id` (`merchant_id`),
   KEY `idx_type` (`type`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='AI生成记录表';
+
+-- =====================================================
+-- 权限表
+-- =====================================================
+CREATE TABLE IF NOT EXISTS `permissions` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '权限ID',
+  `code` VARCHAR(100) NOT NULL UNIQUE COMMENT '权限代码(resource.action格式)',
+  `resource` VARCHAR(50) NOT NULL COMMENT '资源名称(merchant/device/ai/marketing/system/dashboard)',
+  `action` VARCHAR(50) NOT NULL COMMENT '操作名称(view/create/update/delete等)',
+  `description` VARCHAR(200) COMMENT '权限描述',
+  `category` VARCHAR(50) COMMENT '权限分类(UI中的分组)',
+  `status` INT NOT NULL DEFAULT 1 COMMENT '状态: 1启用/0停用',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_code` (`code`),
+  KEY `idx_resource` (`resource`),
+  KEY `idx_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='权限表';
 
 -- =====================================================
 -- 创建索引

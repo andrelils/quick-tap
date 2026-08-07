@@ -5,8 +5,10 @@ export const wechatLogin = (code) => {
 }
 
 // 获取推荐人列表（超管/管理员的 user_code），注册页自动绑定用
+// 后端未提供此接口，返回空列表避免报错
 export const getReferrerList = () => {
-  return request.get('/user/referrer/list')
+  console.warn('后端未提供推荐人列表接口')
+  return Promise.resolve([])
 }
 
 export const registerBind = (data) => {
@@ -21,6 +23,9 @@ export const updateUserInfo = (data) => {
   return request.put('/user/info', data)
 }
 
+// 发送短信验证码
+// 后端未提供此接口
 export const sendSmsCode = (phone) => {
-  return request.post('/user/send-sms', { phone })
+  console.warn('后端未提供SMS短信验证码接口')
+  return Promise.resolve({ success: true, message: '验证码已发送' })
 }

@@ -1,5 +1,6 @@
 package com.quicktap.service;
 
+import com.quicktap.common.ErrorCode;
 import com.quicktap.dto.CorpusCategoryDTO;
 import com.quicktap.dto.CreateCorpusCategoryRequest;
 import com.quicktap.dto.UpdateCorpusCategoryRequest;
@@ -33,7 +34,7 @@ public class CorpusCategoryService {
         log.info("创建分类 | merchantId: {} | name: {}", merchantId, request.getName());
         CorpusCategory existing = corpusCategoryMapper.selectByName(request.getName(), merchantId);
         if (existing != null) {
-            throw new BusinessException("分类名称已存在");
+            throw new BusinessException(ErrorCode.DUPLICATE_RESOURCE, "分类名称已存在");
         }
         CorpusCategory category = CorpusCategory.builder()
                 .merchantId(merchantId)
@@ -53,7 +54,7 @@ public class CorpusCategoryService {
     public CorpusCategoryDTO getById(Long id, Long merchantId) {
         CorpusCategory category = corpusCategoryMapper.selectById(id, merchantId);
         if (category == null) {
-            throw new BusinessException("分类不存在");
+            throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "分类不存在");
         }
         return convertToDTO(category);
     }
@@ -72,7 +73,7 @@ public class CorpusCategoryService {
         log.info("更新分类 | id: {} | merchantId: {}", id, merchantId);
         CorpusCategory category = corpusCategoryMapper.selectById(id, merchantId);
         if (category == null) {
-            throw new BusinessException("分类不存在");
+            throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "分类不存在");
         }
         if (request.getName() != null) category.setName(request.getName());
         if (request.getSortOrder() != null) category.setSortOrder(request.getSortOrder());
@@ -90,10 +91,10 @@ public class CorpusCategoryService {
         log.info("删除分类 | id: {} | merchantId: {}", id, merchantId);
         CorpusCategory category = corpusCategoryMapper.selectById(id, merchantId);
         if (category == null) {
-            throw new BusinessException("分类不存在");
+            throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "分类不存在");
         }
         if (category.getCorpusCount() != null && category.getCorpusCount() > 0) {
-            throw new BusinessException("该分类下存在语料，无法删除");
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "该分类下存在语料，无法删除");
         }
         corpusCategoryMapper.deleteById(id, merchantId);
         log.info("分类删除成功 | id: {}", id);

@@ -80,7 +80,7 @@ public class SecurityUtil {
      * 检查当前用户是否是超级管理员
      */
     public boolean isSuperAdmin() {
-        return "SUPER_ADMIN".equals(getCurrentRole());
+        return "SUPER_ADMIN".equalsIgnoreCase(getCurrentRole());
     }
 
     /**
@@ -88,20 +88,20 @@ public class SecurityUtil {
      */
     public boolean isAdmin() {
         String role = getCurrentRole();
-        return "ADMIN".equals(role) || "SUPER_ADMIN".equals(role);
+        return "ADMIN".equalsIgnoreCase(role) || "SUPER_ADMIN".equalsIgnoreCase(role);
     }
 
     /**
      * 检查当前用户是否是商户
      */
     public boolean isMerchant() {
-        return "MERCHANT".equals(getCurrentRole());
+        return "MERCHANT".equalsIgnoreCase(getCurrentRole());
     }
 
     /**
      * 检查当前用户是否是普通用户
      */
     public boolean isUser() {
-        return "USER".equals(getCurrentRole());
+        return "USER".equalsIgnoreCase(getCurrentRole());
     }
 }

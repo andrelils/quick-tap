@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.quicktap.mapper.SystemSettingMapper">
+
+    <resultMap id="SystemSettingResultMap" type="com.quicktap.entity.SystemSetting">
+        <id column="id" property="id"/>
+        <result column="key_name" property="keyName"/>
+        <result column="value" property="value"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <select id="selectAll" resultMap="SystemSettingResultMap">
+        SELECT id, key_name, value, created_at, updated_at FROM system_setting
+    </select>
+
+    <select id="selectByKey" resultMap="SystemSettingResultMap">
+        SELECT id, key_name, value, created_at, updated_at
+        FROM system_setting
+        WHERE key_name = #{keyName}
+        LIMIT 1
+    </select>
+
+    <insert id="insert">
+        INSERT INTO system_setting (key_name, value, created_at, updated_at)
+        VALUES (#{keyName}, #{value}, NOW(), NOW())
+    </insert>
+
+    <update id="updateByKey">
+        UPDATE system_setting
+        SET value = #{value}, updated_at = NOW()
+        WHERE key_name = #{keyName}
+    </update>
+
+</mapper>

@@ -206,41 +206,13 @@ const loadMerchantInfo = async (merchantId) => {
       merchantInfo.value = res
       appStore.setCurrentMerchant(res)
       bannerImages.value = res?.bannerImages || []
+    } else {
+      uni.showToast({ title: '无法加载商家信息', icon: 'none' })
     }
   } catch (e) {
     console.error('加载商家信息失败', e)
-    if (!merchantInfo.value) {
-      mockMerchantInfo(merchantId)
-    }
+    uni.showToast({ title: '商家信息加载失败，请重试', icon: 'none' })
   }
-}
-
-const mockMerchantInfo = (merchantId) => {
-  const mock = {
-    id: Number(merchantId) || 1,
-    name: '碰一碰演示商家',
-    logo: '',
-    bannerImages: [
-      '/static/banner/banner1.jpg',
-      '/static/banner/banner2.jpg',
-      '/static/banner/banner3.jpg'
-    ],
-    address: '北京市朝阳区建国路88号',
-    description: '这是一个演示商家页面，展示NFC智能推广系统的完整功能',
-    bossWechat: 'demo_boss_wechat',
-    businessHours: '09:00-22:00',
-    wifiName: 'DemoShop-WiFi',
-    wifiPassword: 'demo1234',
-    contactPhone: '400-888-8888',
-    shopImages: [
-      '/static/banner/banner1.jpg',
-      '/static/banner/banner2.jpg',
-      '/static/banner/banner3.jpg'
-    ]
-  }
-  merchantInfo.value = mock
-  bannerImages.value = mock.bannerImages
-  appStore.setCurrentMerchant(mock)
 }
 
 // 统一加载推广平台和优惠券（数据来自【我的推广平台】配置）

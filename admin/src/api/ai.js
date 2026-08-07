@@ -130,13 +130,10 @@ export const getCorpusStorage = (merchantId) => {
 
 // 商家配置总览（表格）
 export const getMerchantConfigList = (params) => {
-  // 后端暂未提供批量商家 AI 配置总览，返回空 page 结构以避免页面报错
-  return Promise.resolve({
-    list: [],
-    total: 0,
-    pageNum: params?.pageNum || 1,
+  return request.get('/admin/ai-config/overview', { params: {
+    pageNum: params?.page || params?.pageNum || 1,
     pageSize: params?.pageSize || 10
-  })
+  } })
 }
 
 // ============ 语料分类 ============

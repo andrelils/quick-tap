@@ -20,7 +20,7 @@ import java.util.List;
 @Slf4j
 @RestController
 @RequestMapping("/api/merchant")
-@CrossOrigin(origins = "*", maxAge = 3600)
+
 public class MerchantController {
 
     @Autowired
@@ -63,10 +63,10 @@ public class MerchantController {
     }
 
     /**
-     * 创建商户（需要 MERCHANT 角色）
+     * 创建商户（仅管理员可操作；商户自助入驻请走专门的公开入驻接口）
      */
     @PostMapping
-    @PreAuthorize("hasRole('MERCHANT')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
     public ApiResponse<Merchant> createMerchant(@RequestBody MerchantCreateRequest request) {
         log.info("创建商户: name={}", request.getName());
         Merchant merchant = merchantService.createMerchant(request);
@@ -100,6 +100,29 @@ public class MerchantController {
         log.info("更新商户: id={}", id);
         Merchant merchant = merchantService.updateMerchant(id, request);
         return ApiResponse.success("更新成功", merchant);
+    }
+
+    /**
+     * 审核商户（统一端点）
+     * 支持 status 参数: approve/reject
+     * DYNAMIC ROUTE: Must appear AFTER all static routes
+     */
+    @PutMapping("/{id}/audit")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
+    public ApiResponse<Void> auditMerchant(
+            @PathVariable Integer id,
+            @RequestParam String status) {
+        log.info("审核商户: id={}, status={}", id, status);
+
+        if ("approve".equalsIgnoreCase(status)) {
+            merchantService.approveMerchant(id);
+            return ApiResponse.success("审核通过");
+        } else if ("reject".equalsIgnoreCase(status)) {
+            merchantService.rejectMerchant(id);
+            return ApiResponse.success("已拒绝");
+        } else {
+            return ApiResponse.badRequest("无效的审核状态");
+        }
     }
 
     /**

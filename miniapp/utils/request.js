@@ -1,4 +1,7 @@
-const BASE_URL = 'http://154.8.138.48:3000/api'
+
+const BASE_URL = process.env.NODE_ENV === 'production'
+    ? 'http://154.8.138.48:3000/api/miniapp'
+    : 'http://localhost:8222/api/miniapp'
 
 const request = (options) => {
   return new Promise((resolve, reject) => {

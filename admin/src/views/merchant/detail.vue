@@ -284,7 +284,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { message, Empty } from 'ant-design-vue'
+import { message, Empty, Modal } from 'ant-design-vue'
 import {
   ArrowLeftOutlined,
   ArrowRightOutlined,
@@ -299,6 +299,7 @@ import {
 } from '@ant-design/icons-vue'
 import { useUserStore } from '@/store/user'
 import { getMerchantDetail, updateMerchant } from '@/api/merchant'
+import { isSuccessCode } from '@/utils/request'
 import {
   getMerchantPromotionConfigs,
   updateMerchantPromotionConfig
@@ -378,7 +379,7 @@ const beforeUpload = (file) => {
 const handleLogoChange = (info) => {
   if (info.file.status === 'done') {
     const res = info.file.response
-    if (res && res.code === 0 && res.data) {
+    if (isSuccessCode(res)) {
       formData.logo = res.data.url
       message.success('Logo 上传成功')
     } else {
@@ -398,9 +399,9 @@ const handleLogoRemove = () => {
 const handleBannerChange = (info) => {
   if (info.file.status === 'done') {
     const res = info.file.response
-    if (res && res.code === 0 && res.data) {
+    if (isSuccessCode(res)) {
       formData.bannerImages = bannerFileList.value
-        .filter(f => f.status === 'done' && f.response?.code === 0)
+        .filter(f => f.status === 'done' && isSuccessCode(f.response))
         .map(f => f.response.data.url)
     } else {
       message.error(res?.message || '上传失败')
@@ -413,7 +414,7 @@ const handleBannerChange = (info) => {
 }
 const handleBannerRemove = (file) => {
   formData.bannerImages = bannerFileList.value
-    .filter(f => f.uid !== file.uid && f.status === 'done' && f.response?.code === 0)
+    .filter(f => f.uid !== file.uid && f.status === 'done' && isSuccessCode(f.response))
     .map(f => f.response.data.url)
   return true
 }
@@ -422,9 +423,9 @@ const handleBannerRemove = (file) => {
 const handleShopChange = (info) => {
   if (info.file.status === 'done') {
     const res = info.file.response
-    if (res && res.code === 0 && res.data) {
+    if (isSuccessCode(res)) {
       formData.shopImages = shopFileList.value
-        .filter(f => f.status === 'done' && f.response?.code === 0)
+        .filter(f => f.status === 'done' && isSuccessCode(f.response))
         .map(f => f.response.data.url)
     } else {
       message.error(res?.message || '上传失败')
@@ -437,7 +438,7 @@ const handleShopChange = (info) => {
 }
 const handleShopRemove = (file) => {
   formData.shopImages = shopFileList.value
-    .filter(f => f.uid !== file.uid && f.status === 'done' && f.response?.code === 0)
+    .filter(f => f.uid !== file.uid && f.status === 'done' && isSuccessCode(f.response))
     .map(f => f.response.data.url)
   return true
 }
@@ -516,6 +517,43 @@ const handleSave = async () => {
 }
 
 const goBack = () => {
+  // 如果有未保存的修改，询问用户是否确认离开
+  const hasChanges = JSON.stringify(merchantData.value) !== JSON.stringify({
+    name: formData.name,
+    logo: formData.logo,
+    banner_images: formData.bannerImages || [],
+    shop_images: formData.shopImages || [],
+    contact_name: formData.contactName,
+    contact_phone: formData.contactPhone,
+    boss_wechat: formData.bossWechat || '',
+    address: formData.address,
+    business_hours: formData.businessHours || '',
+    wifi_name: formData.wifiName || '',
+    wifi_password: formData.wifiPassword || '',
+    description: formData.description
+  })
+
+  if (hasChanges) {
+    Modal.confirm({
+      title: '确认离开？',
+      content: '您有未保存的修改，离开页面后修改将丢失。',
+      okText: '离开',
+      cancelText: '继续编辑',
+      onOk() {
+        // 重置表单数据后离开
+        loadData()
+        navigateAway()
+      },
+      onCancel() {
+        // 继续编辑，不离开
+      }
+    })
+  } else {
+    navigateAway()
+  }
+}
+
+const navigateAway = () => {
   // 商家角色无权访问商家列表，返回仪表盘
   if (isMerchant.value) {
     router.push('/dashboard')

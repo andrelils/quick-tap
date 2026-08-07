@@ -25,6 +25,21 @@ public class AdminCreateRequest {
     private String password;
 
     /**
+     * 昵称
+     */
+    private String nickname;
+
+    /**
+     * 手机号
+     */
+    private String phone;
+
+    /**
+     * 邮箱
+     */
+    private String email;
+
+    /**
      * 角色（super_admin, admin, merchant）
      */
     private String role;

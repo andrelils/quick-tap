@@ -11,7 +11,7 @@
         <div class="logo-icon">
           <LikeOutlined />
         </div>
-        <span v-if="!appStore.collapsed" class="logo-text">晓居智能</span>
+        <span v-if="!appStore.collapsed" class="logo-text">碰一碰好评卡</span>
       </div>
       
       <a-menu
@@ -117,7 +117,7 @@
               @change="handleMerchantChange"
             >
               <a-select-opt-group v-for="group in groupedMerchants" :key="group.label" :label="group.label">
-                <a-select-option v-for="m in group.options" :key="m.id" :value="m.id">{{ m.name }}</a-select-option>
+                <a-select-option v-for="m in group.options" :key="m.id" :value="String(m.id)">{{ m.name }}</a-select-option>
               </a-select-opt-group>
             </a-select>
           </div>
@@ -283,7 +283,7 @@ const loadMerchantList = async () => {
 
 const handleMerchantChange = (value) => {
   if (value) {
-    const merchant = merchantList.value.find(m => m.id === value)
+    const merchant = merchantList.value.find(m => String(m.id) === String(value))
     appStore.setCurrentMerchant(merchant || null)
     userStore.setCurrentMerchantId(value)
   } else {

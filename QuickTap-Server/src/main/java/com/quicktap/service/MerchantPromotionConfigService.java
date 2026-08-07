@@ -1,10 +1,13 @@
 package com.quicktap.service;
 
 import com.quicktap.dto.MerchantPromotionConfigDTO;
+import com.quicktap.dto.PromotionPlatformDTO;
 import com.quicktap.entity.MerchantPromotionConfig;
+import com.quicktap.entity.Coupon;
 import com.quicktap.exception.BusinessException;
 import com.quicktap.mapper.MerchantPromotionConfigMapper;
 import com.quicktap.security.SecurityUtil;
+import com.quicktap.common.ErrorCode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
@@ -27,6 +30,12 @@ public class MerchantPromotionConfigService {
 
     @Autowired
     private SecurityUtil securityUtil;
+
+    @Autowired
+    private PromotionPlatformService promotionPlatformService;
+
+    @Autowired
+    private CouponService couponService;
 
     /**
      * 获取商户的所有推广配置
@@ -64,7 +73,7 @@ public class MerchantPromotionConfigService {
         log.info("获取推广配置详情 | id: {}", id);
         MerchantPromotionConfig config = merchantPromotionConfigMapper.selectById(id.intValue());
         if (config == null) {
-            throw new BusinessException("推广配置不存在");
+            throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "推广配置不存在");
         }
         return convertToDTO(config);
     }
@@ -81,7 +90,7 @@ public class MerchantPromotionConfigService {
         if (request.getPlatformId() != null) {
             MerchantPromotionConfig existing = merchantPromotionConfigMapper.selectByMerchantIdAndPlatformId(merchantId.intValue(), request.getPlatformId().intValue());
             if (existing != null) {
-                throw new BusinessException("该推广平台已配置，请勿重复添加");
+                throw new BusinessException(ErrorCode.DUPLICATE_RESOURCE, "该推广平台已配置，请勿重复添加");
             }
         }
 
@@ -112,12 +121,12 @@ public class MerchantPromotionConfigService {
 
         MerchantPromotionConfig config = merchantPromotionConfigMapper.selectById(id.intValue());
         if (config == null) {
-            throw new BusinessException("推广配置不存在");
+            throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "推广配置不存在");
         }
 
-        // 验证所有权
-        if (!config.getMerchantId().equals(merchantId)) {
-            throw new BusinessException("无权修改该推广配置");
+        // 验证所有权（管理员/超管 merchantId 为 null，跳过校验）
+        if (merchantId != null && !config.getMerchantId().equals(merchantId)) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, "无权修改该推广配置");
         }
 
         if (request.getParams() != null) {
@@ -151,12 +160,12 @@ public class MerchantPromotionConfigService {
 
         MerchantPromotionConfig config = merchantPromotionConfigMapper.selectById(id.intValue());
         if (config == null) {
-            throw new BusinessException("推广配置不存在");
+            throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "推广配置不存在");
         }
 
-        // 验证所有权
-        if (!config.getMerchantId().equals(merchantId)) {
-            throw new BusinessException("无权删除该推广配置");
+        // 验证所有权（管理员/超管 merchantId 为 null，跳过校验）
+        if (merchantId != null && !config.getMerchantId().equals(merchantId)) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, "无权删除该推广配置");
         }
 
         merchantPromotionConfigMapper.deleteById(id.intValue());
@@ -166,7 +175,7 @@ public class MerchantPromotionConfigService {
      * 转换为DTO
      */
     private MerchantPromotionConfigDTO convertToDTO(MerchantPromotionConfig config) {
-        return MerchantPromotionConfigDTO.builder()
+        MerchantPromotionConfigDTO dto = MerchantPromotionConfigDTO.builder()
                 .id(config.getId())
                 .merchantId(config.getMerchantId())
                 .type(config.getType())
@@ -180,5 +189,49 @@ public class MerchantPromotionConfigService {
                 .createdAt(config.getCreatedAt())
                 .updatedAt(config.getUpdatedAt())
                 .build();
+
+        // 添加平台详情
+        if ("platform".equals(config.getType()) && config.getPlatformId() != null) {
+            try {
+                PromotionPlatformDTO platform = promotionPlatformService.getPlatformById(config.getPlatformId());
+                if (platform != null) {
+                    dto.setPlatformName(platform.getName());
+                    dto.setPlatformCode(platform.getCode());
+                    dto.setPlatformDescription(platform.getDescription());
+                    dto.setPlatformColor(platform.getColor());
+                    dto.setJumpMode(platform.getJumpMode());
+                    dto.setSchemeTemplate(platform.getSchemeTemplate());
+                    dto.setWebUrlTemplate(platform.getWebUrlTemplate());
+                    dto.setMiniprogramAppid(platform.getMiniprogramAppid());
+                    dto.setMiniprogramPathTemplate(platform.getMiniprogramPathTemplate());
+                    dto.setRequiredParams(platform.getRequiredParams());
+                    dto.setOptionalParams(platform.getOptionalParams());
+                }
+            } catch (Exception e) {
+                log.warn("获取平台详情失败 | platformId: {}", config.getPlatformId(), e);
+            }
+        }
+
+        // 添加优惠券详情
+        if ("coupon".equals(config.getType()) && config.getCouponId() != null) {
+            try {
+                Coupon coupon = couponService.getCouponById(config.getCouponId().intValue());
+                if (coupon != null) {
+                    dto.setCouponName(coupon.getTitle());
+                    dto.setCouponType(coupon.getType());
+                    dto.setCouponValue(coupon.getAmount() != null ? coupon.getAmount().toPlainString() : null);
+                    dto.setCouponThreshold(coupon.getMinAmount() != null ? coupon.getMinAmount().toPlainString() : null);
+                    dto.setCouponStatus(coupon.getStatus());
+                    dto.setCouponTotalCount(coupon.getTotalCount());
+                    dto.setCouponRemainCount(coupon.getRemainCount());
+                    dto.setCouponValidStart(coupon.getStartTime() != null ? coupon.getStartTime().toString() : null);
+                    dto.setCouponValidEnd(coupon.getEndTime() != null ? coupon.getEndTime().toString() : null);
+                }
+            } catch (Exception e) {
+                log.warn("获取优惠券详情失败 | couponId: {}", config.getCouponId(), e);
+            }
+        }
+
+        return dto;
     }
 }

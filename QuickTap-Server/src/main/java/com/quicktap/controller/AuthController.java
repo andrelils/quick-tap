@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -25,7 +26,7 @@ import java.util.Map;
 @Slf4j
 @RestController
 @RequestMapping("/api")
-@CrossOrigin(origins = "*", maxAge = 3600)
+
 public class AuthController {
 
     @Autowired
@@ -201,10 +202,8 @@ public class AuthController {
             }
         }
 
-        // 超级管理员拥有全部权限
-        java.util.List<String> permissions = "SUPER_ADMIN".equalsIgnoreCase(role)
-                ? java.util.Collections.singletonList("*")
-                : java.util.Collections.emptyList();
+        // 根据角色获取对应的权限列表（而不是硬编码）
+        java.util.List<String> permissions = getRolePermissions(role);
         info.put("permissions", permissions);
 
         return ApiResponse.success("获取成功", info);
@@ -284,7 +283,7 @@ public class AuthController {
     }
 
     /**
-     * 当前登录管理员修改自己的基础资料（昵称/邮箱/手机号）
+     * 当前登录管理员修改自己的基础资料（昵称/邮箱/手机号/头像）
      * 前端 auth.js: PUT /api/admin/user/info
      */
     @PutMapping("/admin/user/info")
@@ -294,11 +293,12 @@ public class AuthController {
             return ApiResponse.unauthorized("未登录");
         }
         String nickname = body.get("nickname") != null ? String.valueOf(body.get("nickname")) : null;
-        String avatar = body.get("avatar") != null ? String.valueOf(body.get("avatar")) : null;
         String email = body.get("email") != null ? String.valueOf(body.get("email")) : null;
         String phone = body.get("phone") != null ? String.valueOf(body.get("phone")) : null;
+        String avatar = body.get("avatar") != null ? String.valueOf(body.get("avatar")) : null;
+        String remark = body.get("remark") != null ? String.valueOf(body.get("remark")) : null;
         log.info("管理员修改自己的资料: userId={}", userId);
-        Admin updated = adminService.updateInfoBySelf(userId.intValue(), nickname, avatar, email, phone);
+        Admin updated = adminService.updateInfoBySelf(userId.intValue(), nickname, email, phone, avatar, remark);
         updated.setPassword(null);
         return ApiResponse.success("资料修改成功", updated);
     }
@@ -331,5 +331,48 @@ public class AuthController {
 
         // 使用远程地址作为最后的选择
         return request.getRemoteAddr();
+    }
+
+    /**
+     * 获取角色的权限列表
+     * 与RoleController中的getRolePermissions方法保持一致
+     */
+    private java.util.List<String> getRolePermissions(String roleId) {
+        switch (roleId) {
+            case "SUPER_ADMIN":
+            case "super_admin":
+                return Arrays.asList(
+                    "admin.view", "admin.create", "admin.edit", "admin.delete",
+                    "merchant.view", "merchant.create", "merchant.edit", "merchant.delete",
+                    "device.view", "device.create", "device.edit", "device.delete",
+                    "user.view", "user.create", "user.edit", "user.delete",
+                    "order.view", "order.edit",
+                    "statistics.view",
+                    "ai-generate.use", "ai-generate.view",
+                    "corpus.manage",
+                    "settings.manage",
+                    "role.manage"
+                );
+            case "ADMIN":
+            case "admin":
+                return Arrays.asList(
+                    "merchant.view", "merchant.create", "merchant.edit",
+                    "device.view", "device.create", "device.edit",
+                    "user.view",
+                    "order.view",
+                    "statistics.view"
+                );
+            case "MERCHANT":
+            case "merchant":
+                return Arrays.asList(
+                    "device.view", "device.create", "device.edit",
+                    "order.view",
+                    "statistics.view",
+                    "ai-generate.use", "ai-generate.view",
+                    "corpus.manage"
+                );
+            default:
+                return new java.util.ArrayList<>();
+        }
     }
 }

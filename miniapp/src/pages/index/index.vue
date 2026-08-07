@@ -4,7 +4,7 @@
       <view class="logo-icon">
         <view class="icon-scan" :style="{ width: '80rpx', height: '80rpx' }"></view>
       </view>
-      <text class="app-title">晓居智能</text>
+      <text class="app-title">碰一碰好评卡</text>
       <text class="app-subtitle">智能推广 · 一键好评</text>
       <view class="loading-dots">
         <view class="dot"></view>
@@ -22,7 +22,12 @@ import { onLoad } from '@dcloudio/uni-app'
 import { checkMerchantBind } from '@/api/merchant'
 
 const statusText = ref('正在识别设备...')
+const hasDevice = ref(false)  // 是否识别到设备
+const deviceCode = ref('')  // 设备编码
 
+/**
+ * 解析URL参数，支持多种来源
+ */
 const parseUrlParams = () => {
   const params = {}
 
@@ -55,6 +60,13 @@ const parseUrlParams = () => {
   return params
 }
 
+/**
+ * 主要逻辑：检查设备信息
+ * 1. 如果有设备信息，检查是否已绑定商家
+ *    - 已绑定：跳转到商家详情页
+ *    - 未绑定：跳转到注册页
+ * 2. 如果没有设备信息：停留在首页，显示提示信息
+ */
 const processEntry = async () => {
   statusText.value = '正在识别设备...'
 
@@ -66,20 +78,30 @@ const processEntry = async () => {
   // 提取 code（支持多种字段名）
   const code = mergedOptions.code || mergedOptions.deviceNo || mergedOptions.q || ''
 
-  console.log('[ENTRY] URL参数:', urlParams)
-  console.log('[ENTRY] 最终code:', code)
+  console.log('[INDEX] URL参数:', urlParams)
+  console.log('[INDEX] onLoad参数:', onLoadOptions)
+  console.log('[INDEX] 最终code:', code)
 
   if (!code) {
-    statusText.value = '未识别到设备信息，请通过NFC碰一碰或扫码进入'
+    // 【重要修改】未识别到设备，停留在首页，不跳转
+    statusText.value = '请通过NFC碰一碰或扫描二维码进入'
+    hasDevice.value = false
+    deviceCode.value = ''
+    console.log('[INDEX] 未识别到设备，停留在首页')
     return
   }
+
+  // 有设备编码，标记为已识别
+  hasDevice.value = true
+  deviceCode.value = code
 
   try {
     statusText.value = '正在校验绑定信息...'
     const res = await checkMerchantBind({ code })
-    console.log('[ENTRY] 绑定校验结果:', res)
+    console.log('[INDEX] 绑定校验结果:', res)
 
     if (res && res.bound && res.merchantId) {
+      // 设备已绑定，跳转到商家详情页
       statusText.value = '正在进入商家页...'
       setTimeout(() => {
         uni.redirectTo({
@@ -87,6 +109,7 @@ const processEntry = async () => {
         })
       }, 500)
     } else {
+      // 设备未绑定，跳转到注册页
       statusText.value = '设备未绑定，前往注册页'
       setTimeout(() => {
         uni.redirectTo({
@@ -95,8 +118,9 @@ const processEntry = async () => {
       }, 800)
     }
   } catch (e) {
-    console.error('[ENTRY] 绑定校验失败:', e)
-    statusText.value = '校验失败，前往注册页'
+    console.error('[INDEX] 绑定校验失败:', e)
+    // 【修改】校验失败时，也跳转到注册页让用户完成绑定
+    statusText.value = '前往注册绑定设备'
     setTimeout(() => {
       uni.redirectTo({
         url: `/pages/user/register-bind?code=${encodeURIComponent(code)}`
@@ -106,13 +130,13 @@ const processEntry = async () => {
 }
 
 onLoad((options) => {
-  console.log('[ENTRY] onLoad options:', JSON.stringify(options))
+  console.log('[INDEX] onLoad options:', JSON.stringify(options))
   // 保存 onLoad 参数供 processEntry 使用
   window.__onLoadOptions = options || {}
 })
 
 onMounted(() => {
-  console.log('[ENTRY] onMounted, hash:', window.location.hash)
+  console.log('[INDEX] onMounted, hash:', window.location.hash)
   // 确保 DOM 已就绪后再执行
   setTimeout(() => {
     processEntry()

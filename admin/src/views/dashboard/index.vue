@@ -13,7 +13,7 @@
         :filter-option="filterMerchantOption"
         @change="handleMerchantChange"
       >
-        <a-select-option v-for="m in merchantList" :key="m.id" :value="m.id">{{ m.name }}</a-select-option>
+        <a-select-option v-for="m in merchantList" :key="m.id" :value="String(m.id)">{{ m.name }}</a-select-option>
       </a-select>
     </div>
     
@@ -203,7 +203,7 @@ const filterMerchantOption = (input, option) => {
 
 const handleMerchantChange = (value) => {
   if (value) {
-    const merchant = merchantList.value.find(m => m.id === value)
+    const merchant = merchantList.value.find(m => String(m.id) === String(value))
     appStore.setCurrentMerchant(merchant || null)
     userStore.setCurrentMerchantId(value)
   } else {

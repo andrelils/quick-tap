@@ -65,8 +65,8 @@
           <template v-else-if="column.key === 'status'">
             <a-badge :status="record.status === 1 ? 'success' : 'default'" :text="record.status === 1 ? '启用' : '禁用'" />
           </template>
-          <template v-else-if="column.key === 'created_at'">
-            {{ record.created_at ? dayjs(record.created_at).format('YYYY-MM-DD HH:mm:ss') : '--' }}
+          <template v-else-if="column.key === 'createdAt'">
+            {{ record.createdAt ? dayjs(record.createdAt).format('YYYY-MM-DD HH:mm:ss') : '--' }}
           </template>
           <template v-else-if="column.key === 'action'">
             <a-space size="small">
@@ -98,7 +98,7 @@
           <a-input v-model:value="formData.username" :disabled="isEdit" placeholder="请输入登录账号" />
         </a-form-item>
         <a-form-item v-if="isEdit" label="用户编号">
-          <a-input :value="formData.user_code" disabled placeholder="系统自动生成" />
+          <a-input :value="formData.userCode" disabled placeholder="系统自动生成" />
         </a-form-item>
         <a-form-item label="昵称" name="nickname">
           <a-input v-model:value="formData.nickname" placeholder="请输入昵称" />
@@ -163,7 +163,7 @@ const submitting = ref(false)
 const formRef = ref()
 const isEdit = ref(false)
 
-const formData = reactive({ id: null, username: '', user_code: '', nickname: '', password: '', role: 'admin', status: 1 })
+const formData = reactive({ id: null, username: '', userCode: '', nickname: '', password: '', role: 'admin', status: 1 })
 
 const formRules = {
   username: [{ required: true, message: '请输入账号', trigger: 'blur' }],
@@ -177,11 +177,11 @@ const roleColorMap = { super_admin: 'red', admin: 'blue', merchant: 'green' }
 const columns = [
   { title: '头像', dataIndex: 'avatar', key: 'avatar', width: 70 },
   { title: '账号', dataIndex: 'username', key: 'username', width: 140 },
-  { title: '用户编号', dataIndex: 'user_code', key: 'user_code', width: 150 },
+  { title: '用户编号', dataIndex: 'userCode', key: 'userCode', width: 150 },
   { title: '昵称', dataIndex: 'nickname', key: 'nickname', width: 140 },
   { title: '角色', dataIndex: 'role', key: 'role', width: 120 },
   { title: '状态', dataIndex: 'status', key: 'status', width: 100 },
-  { title: '创建时间', dataIndex: 'created_at', key: 'created_at', width: 170 },
+  { title: '创建时间', dataIndex: 'createdAt', key: 'createdAt', width: 170 },
   { title: '操作', dataIndex: 'action', key: 'action', width: 260, fixed: 'right' }
 ]
 
@@ -208,14 +208,14 @@ const handlePageChange = () => { loadData() }
 const handleAdd = () => {
   isEdit.value = false
   modalTitle.value = '新增用户'
-  Object.assign(formData, { id: null, username: '', user_code: '', nickname: '', password: '', role: 'admin', status: 1 })
+  Object.assign(formData, { id: null, username: '', userCode: '', nickname: '', password: '', role: 'admin', status: 1 })
   modalVisible.value = true
 }
 
 const handleEdit = (record) => {
   isEdit.value = true
   modalTitle.value = '编辑用户'
-  Object.assign(formData, { id: record.id, username: record.username, user_code: record.user_code || '', nickname: record.nickname, password: '', role: record.role, status: record.status })
+  Object.assign(formData, { id: record.id, username: record.username, userCode: record.userCode || '', nickname: record.nickname, password: '', role: record.role, status: record.status })
   modalVisible.value = true
 }
 

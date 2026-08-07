@@ -77,6 +77,20 @@ public class OrderController {
         return ApiResponse.success("支付成功", order);
     }
 
+    /**
+     * 订单退款
+     * 前端 marketing.js#refundOrder 调用，body 可携带 { reason }
+     */
+    @PutMapping("/{id}/refund")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
+    public ApiResponse<Order> refundOrder(
+            @PathVariable @NotNull Integer id,
+            @RequestBody(required = false) java.util.Map<String, Object> body) {
+        String reason = body != null ? (String) body.get("reason") : null;
+        Order order = orderService.refundOrder(id, reason);
+        return ApiResponse.success("退款成功", order);
+    }
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
     public ApiResponse<Void> deleteOrder(@PathVariable @NotNull Integer id) {

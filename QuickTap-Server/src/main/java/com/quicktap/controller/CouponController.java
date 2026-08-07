@@ -30,6 +30,7 @@ public class CouponController {
     // ============================================================================
 
     @GetMapping("/list")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'MERCHANT')")
     public ApiResponse<PageResponse<Coupon>> listCoupons(
             @RequestParam(defaultValue = "1") Integer pageNum,
             @RequestParam(defaultValue = "10") Integer pageSize,
@@ -57,9 +58,35 @@ public class CouponController {
         coupon.setStartTime(request.getStartTime());
         coupon.setEndTime(request.getEndTime());
         coupon.setLink(request.getLink());
+        coupon.setDescription(request.getDescription());
         coupon.setStatus(1);
         Coupon created = couponService.createCoupon(coupon);
         return ApiResponse.success("创建成功", created);
+    }
+
+    /**
+     * 用户领取的卡券列表（需要登录）
+     */
+    @GetMapping("/my")
+    @PreAuthorize("hasRole('USER')")
+    public ApiResponse<PageResponse<Coupon>> getMyCoupons(
+            @RequestParam(defaultValue = "1") Integer pageNum,
+            @RequestParam(defaultValue = "10") Integer pageSize) {
+        PageResponse<Coupon> data = couponService.getUserCouponList(pageNum, pageSize);
+        return ApiResponse.success("获取成功", data);
+    }
+
+    /**
+     * 按商户查询卡券（静态路由，必须在 /{id} 之前）
+     */
+    @GetMapping("/merchant/{merchantId}")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'MERCHANT')")
+    public ApiResponse<PageResponse<Coupon>> getMerchantCoupons(
+            @PathVariable @NotNull Integer merchantId,
+            @RequestParam(defaultValue = "1") Integer pageNum,
+            @RequestParam(defaultValue = "10") Integer pageSize) {
+        PageResponse<Coupon> data = couponService.getMerchantCouponList(merchantId, pageNum, pageSize);
+        return ApiResponse.success("获取成功", data);
     }
 
     // ============================================================================
@@ -71,15 +98,6 @@ public class CouponController {
     public ApiResponse<Coupon> getCoupon(@PathVariable @NotNull Integer id) {
         Coupon coupon = couponService.getCouponById(id);
         return ApiResponse.success("获取成功", coupon);
-    }
-
-    @GetMapping("/merchant/{merchantId}")
-    public ApiResponse<PageResponse<Coupon>> getMerchantCoupons(
-            @PathVariable @NotNull Integer merchantId,
-            @RequestParam(defaultValue = "1") Integer pageNum,
-            @RequestParam(defaultValue = "10") Integer pageSize) {
-        PageResponse<Coupon> data = couponService.getMerchantCouponList(merchantId, pageNum, pageSize);
-        return ApiResponse.success("获取成功", data);
     }
 
     @PutMapping("/{id}")
@@ -94,6 +112,7 @@ public class CouponController {
         coupon.setStartTime(request.getStartTime());
         coupon.setEndTime(request.getEndTime());
         coupon.setLink(request.getLink());
+        coupon.setDescription(request.getDescription());
         Coupon updated = couponService.updateCoupon(id, coupon);
         return ApiResponse.success("更新成功", updated);
     }
@@ -112,8 +131,8 @@ public class CouponController {
         return ApiResponse.success("启用成功", coupon);
     }
 
-    @PutMapping("/{id}/claim")
-    @PreAuthorize("hasAnyRole('USER', 'MERCHANT')")
+    @PostMapping("/{id}/claim")
+    @PreAuthorize("hasRole('USER')")  // 只允许普通用户领取，商户不能领取自己创建的卡券
     public ApiResponse<Coupon> claimCoupon(@PathVariable @NotNull Integer id) {
         Coupon coupon = couponService.claimCoupon(id);
         return ApiResponse.success("领取成功", coupon);

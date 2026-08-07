@@ -36,16 +36,13 @@ public class UploadController {
     @Value("${file.upload.upload-dir:uploads/}")
     private String uploadDir;
 
-    @Value("${server.servlet.context-path:/api}")
-    private String contextPath;
-
     /**
      * 上传图片
      * 限制: 最大 10MB
      * 支持: jpg, jpeg, png, gif, webp
      */
     @PostMapping("/image")
-    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'MERCHANT')")
     public ApiResponse<Map<String, Object>> uploadImage(@RequestParam("file") MultipartFile file) {
         if (file == null || file.getOriginalFilename() == null) {
             log.warn("无效的图片上传请求");
@@ -63,6 +60,37 @@ public class UploadController {
         }
 
         return saveFile(file, "images");
+    }
+
+    /**
+     * 上传头像
+     * 限制: 最大 5MB
+     * 支持: jpg, jpeg, png, gif, webp
+     * 存储子目录: uploads/avatars/
+     */
+    @PostMapping("/avatar")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'MERCHANT', 'USER')")
+    public ApiResponse<Map<String, Object>> uploadAvatar(@RequestParam("file") MultipartFile file) {
+        if (file == null || file.getOriginalFilename() == null) {
+            log.warn("无效的头像上传请求");
+            return ApiResponse.badRequest("文件无效");
+        }
+
+        log.info("头像上传请求: filename={}, size={}, contentType={}",
+                 file.getOriginalFilename(), file.getSize(), file.getContentType());
+
+        // 头像额外限制 5MB
+        if (file.getSize() > 5L * 1024 * 1024) {
+            return ApiResponse.badRequest("头像大小不能超过 5MB");
+        }
+
+        FileUploadValidator.ValidationResult result = FileUploadValidator.validateImage(file);
+        if (!result.isValid()) {
+            log.warn("头像文件验证失败: {}", result.getMessage());
+            return ApiResponse.badRequest(result.getMessage());
+        }
+
+        return saveFile(file, "avatars");
     }
 
     /**
@@ -144,11 +172,9 @@ public class UploadController {
             // 保存文件
             Files.write(filePath, file.getBytes());
 
-            // 构建文件 URL（必须包含 context-path，否则后端无法识别）
-            // 去除 uploadDir 和 contextPath 尾部斜杠，避免双斜杠
-            String cleanContext = contextPath.endsWith("/") ? contextPath.substring(0, contextPath.length() - 1) : contextPath;
+            // 构建文件 URL（统一为 /uploads/subDir/filename，末尾不带多余斜杠）
             String cleanUploadDir = uploadDir.endsWith("/") ? uploadDir.substring(0, uploadDir.length() - 1) : uploadDir;
-            String fileUrl = String.format("%s/%s/%s/%s", cleanContext, cleanUploadDir, subDir, safeFileName);
+            String fileUrl = String.format("/%s/%s/%s", cleanUploadDir, subDir, safeFileName);
 
             // 返回结果
             Map<String, Object> result = new HashMap<>();

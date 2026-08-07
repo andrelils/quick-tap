@@ -20,7 +20,7 @@ import java.util.Map;
 @Slf4j
 @RestController
 @RequestMapping("/api/admin/statistics")
-@CrossOrigin(origins = "*", maxAge = 3600)
+
 @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
 @RequiredArgsConstructor
 public class StatisticsController {

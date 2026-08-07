@@ -90,7 +90,7 @@
                 <a-form-item
                   v-for="param in detail.requiredParams"
                   :key="param.key"
-                  :label="param.label"
+                  :label="param.label || param.key"
                 >
                   <a-input v-model:value="editForm.params[param.key]" :placeholder="param.placeholder" />
                 </a-form-item>
@@ -102,7 +102,7 @@
                 <a-form-item
                   v-for="param in detail.optionalParams"
                   :key="param.key"
-                  :label="param.label"
+                  :label="param.label || param.key"
                 >
                   <a-input v-model:value="editForm.params[param.key]" :placeholder="param.placeholder" />
                 </a-form-item>
@@ -343,9 +343,46 @@ const loadDetail = async () => {
       detail.value = res
       editForm.customName = res.customName || ''
       editForm.customIcon = res.customIcon || ''
-      editForm.params = JSON.parse(JSON.stringify(res.params || {}))
+
+      // 解析 params（后端可能返回JSON字符串）
+      let paramsObj = {}
+      if (res.params) {
+        if (typeof res.params === 'string') {
+          try {
+            paramsObj = JSON.parse(res.params)
+          } catch (e) {
+            paramsObj = {}
+          }
+        } else {
+          paramsObj = res.params
+        }
+      }
+      editForm.params = JSON.parse(JSON.stringify(paramsObj))
       editForm.sort = res.sort || 0
       editForm.status = res.status ?? 1
+
+      // 解析 requiredParams 和 optionalParams（可能是JSON字符串）
+      if (typeof res.requiredParams === 'string') {
+        try {
+          res.requiredParams = JSON.parse(res.requiredParams)
+        } catch (e) {
+          res.requiredParams = []
+        }
+      }
+      if (typeof res.optionalParams === 'string') {
+        try {
+          res.optionalParams = JSON.parse(res.optionalParams)
+        } catch (e) {
+          res.optionalParams = []
+        }
+      }
+
+      // 确保所有参数key都在editForm.params中初始化
+      ;[...(res.requiredParams || []), ...(res.optionalParams || [])].forEach(param => {
+        if (param.key && editForm.params[param.key] === undefined) {
+          editForm.params[param.key] = ''
+        }
+      })
     }
   } catch (e) {
     message.error('加载详情失败')
@@ -376,7 +413,8 @@ const handleSave = async () => {
       status: editForm.status
     }
     if (detail.value.type !== 'coupon') {
-      payload.params = editForm.params
+      // 后端 params 字段为字符串类型，需序列化
+      payload.params = JSON.stringify(editForm.params)
     }
     await updateMerchantPromotionConfig(route.params.id, payload)
     message.success('保存成功')

@@ -4,6 +4,7 @@ import com.quicktap.entity.User;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import java.util.List;
+import java.util.Map;
 
 @Mapper
 public interface UserMapper {
@@ -14,8 +15,11 @@ public interface UserMapper {
     User selectByUnionid(@Param("unionid") String unionid);
     List<User> selectAll();
     List<User> selectPage(@Param("offset") int offset, @Param("pageSize") int pageSize);
+    List<User> selectByKeyword(@Param("params") Map<String, Object> params, @Param("offset") int offset, @Param("pageSize") int pageSize);
+    long countByKeyword(@Param("params") Map<String, Object> params);
     int insert(User user);
     int update(User user);
+    int delete(@Param("id") Long id);
     int deleteById(@Param("id") Long id);
     long countAll();
     long countByMerchantId(@Param("merchantId") Integer merchantId);

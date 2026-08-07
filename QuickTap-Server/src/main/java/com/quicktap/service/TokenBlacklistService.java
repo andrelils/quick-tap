@@ -51,14 +51,21 @@ public class TokenBlacklistService {
             String blacklistKey = BLACKLIST_PREFIX + token;
 
             if (redisTemplate != null) {
-                // 使用Redis存储
-                redisTemplate.opsForValue().set(blacklistKey, "blacklisted", ttl, TimeUnit.SECONDS);
-                log.info("[TokenBlacklist] Token已加入Redis黑名单, TTL: {}s", ttl);
+                try {
+                    // 使用Redis存储
+                    redisTemplate.opsForValue().set(blacklistKey, "blacklisted", ttl, TimeUnit.SECONDS);
+                    log.info("[TokenBlacklist] Token已加入Redis黑名单, TTL: {}s", ttl);
+                } catch (Exception redisException) {
+                    // Redis 连接失败或操作失败时，仅记录警告，不影响业务流程
+                    log.warn("[TokenBlacklist] Redis不可用，Token黑名单功能降级: {}",
+                            redisException.getMessage());
+                }
             } else {
-                // Redis不可用时，只记录日志
-                log.warn("[TokenBlacklist] Redis不可用, 仅记录日志: token={}", maskToken(token));
+                // Redis 未启用时，只记录日志
+                log.debug("[TokenBlacklist] Redis未启用, 仅记录日志: token={}", maskToken(token));
             }
         } catch (Exception e) {
+            // Token 解析或其他异常
             log.error("[TokenBlacklist] 添加token到黑名单失败: {}", e.getMessage(), e);
         }
     }
@@ -73,10 +80,17 @@ public class TokenBlacklistService {
             String blacklistKey = BLACKLIST_PREFIX + token;
 
             if (redisTemplate != null) {
-                Boolean exists = redisTemplate.hasKey(blacklistKey);
-                return exists != null && exists;
+                try {
+                    Boolean exists = redisTemplate.hasKey(blacklistKey);
+                    return exists != null && exists;
+                } catch (Exception redisException) {
+                    // Redis 连接失败时，返回 false 允许请求通过（宽松策略）
+                    log.warn("[TokenBlacklist] Redis不可用，黑名单检查降级: {}",
+                            redisException.getMessage());
+                    return false;
+                }
             }
-            // Redis不可用时，返回false允许请求通过
+            // Redis 未启用时，返回 false 允许请求通过
             return false;
         } catch (Exception e) {
             log.error("[TokenBlacklist] 检查token黑名单状态失败: {}", e.getMessage());
@@ -96,12 +110,18 @@ public class TokenBlacklistService {
         }
         try {
             if (redisTemplate != null) {
-                String key = USER_REVOKE_PREFIX + userId;
-                redisTemplate.opsForValue().set(key, String.valueOf(System.currentTimeMillis()),
-                        BLACKLIST_EXPIRY_TIME, TimeUnit.SECONDS);
-                log.info("[TokenBlacklist] 用户 {} 的所有Token已撤销", userId);
+                try {
+                    String key = USER_REVOKE_PREFIX + userId;
+                    redisTemplate.opsForValue().set(key, String.valueOf(System.currentTimeMillis()),
+                            BLACKLIST_EXPIRY_TIME, TimeUnit.SECONDS);
+                    log.info("[TokenBlacklist] 用户 {} 的所有Token已撤销", userId);
+                } catch (Exception redisException) {
+                    // Redis 连接失败或操作失败时，仅记录警告
+                    log.warn("[TokenBlacklist] Redis不可用，用户撤销功能降级: userId={}, error={}",
+                            userId, redisException.getMessage());
+                }
             } else {
-                log.warn("[TokenBlacklist] Redis不可用, 无法撤销用户 {} 的Token", userId);
+                log.debug("[TokenBlacklist] Redis未启用, 无法撤销用户 {} 的Token", userId);
             }
         } catch (Exception e) {
             log.error("[TokenBlacklist] 撤销用户Token失败: userId={}, error={}", userId, e.getMessage(), e);
@@ -119,8 +139,15 @@ public class TokenBlacklistService {
         }
         try {
             if (redisTemplate != null) {
-                Boolean exists = redisTemplate.hasKey(USER_REVOKE_PREFIX + userId);
-                return exists != null && exists;
+                try {
+                    Boolean exists = redisTemplate.hasKey(USER_REVOKE_PREFIX + userId);
+                    return exists != null && exists;
+                } catch (Exception redisException) {
+                    // Redis 连接失败时，返回 false（宽松策略）
+                    log.warn("[TokenBlacklist] Redis不可用，用户撤销检查降级: userId={}, error={}",
+                            userId, redisException.getMessage());
+                    return false;
+                }
             }
             return false;
         } catch (Exception e) {

@@ -11,6 +11,8 @@ import com.quicktap.mapper.MerchantPromotionConfigMapper;
 import com.quicktap.security.SecurityUtil;
 import com.quicktap.service.PromotionPlatformService;
 import com.quicktap.service.MerchantPromotionConfigService;
+import com.quicktap.exception.BusinessException;
+import com.quicktap.common.ErrorCode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -41,10 +43,67 @@ public class PromotionController {
     @Autowired
     private PromotionPlatformMapper promotionPlatformMapper;
 
-    @Autowired
-    private MerchantPromotionConfigMapper merchantPromotionConfigMapper;
+    /**
+     * 获取推广平台列表（别名路由，兼容管理员端调用）
+     * - 支持分页参数 pageNum/pageSize（有分页时返回 PageResponse，无分页时返回全量 List）
+     * 对应 Node: GET /api/admin/promotion/platforms
+     */
+    @GetMapping("/admin/promotion/platforms")
+    public ApiResponse<?> getAdminPlatforms(
+            @RequestParam(required = false) Integer pageNum,
+            @RequestParam(required = false) Integer pageSize) {
+        log.info("获取推广平台列表(管理员): pageNum={}, pageSize={}", pageNum, pageSize);
 
-    // ==================== 推广平台接口（超管维护） ====================
+        // 如果传了分页参数，走分页查询（PageResponse 结构）
+        if (pageNum != null && pageSize != null && pageNum > 0 && pageSize > 0) {
+            int offset = (pageNum - 1) * pageSize;
+            List<PromotionPlatform> platforms = promotionPlatformMapper.selectPage(offset, pageSize);
+            long total = promotionPlatformMapper.countAll();
+            List<PromotionPlatformDTO> dtoList = platforms.stream()
+                    .map(this::convertPlatformToDTO)
+                    .collect(Collectors.toList());
+            PageResponse<PromotionPlatformDTO> page = PageResponse.of(dtoList, pageNum, pageSize, total);
+            return ApiResponse.success("获取推广平台成功", page);
+        }
+
+        // 否则返回全量启用的平台列表
+        List<PromotionPlatformDTO> platforms = promotionPlatformService.getAllEnabledPlatforms();
+        return ApiResponse.success("获取推广平台成功", platforms);
+    }
+
+    /**
+     * 获取商户的推广配置列表（别名路由）
+     * 对应 Node: GET /api/merchant/promotion/configs
+     */
+    @GetMapping("/merchant/promotion/configs")
+    @PreAuthorize("hasAnyRole('MERCHANT', 'ADMIN', 'SUPER_ADMIN')")
+    public ApiResponse<List<MerchantPromotionConfigDTO>> getMerchantPromotionConfigs(
+            @RequestParam(required = false) Integer merchantId,
+            @RequestParam(required = false) String type) {
+        // 确定查询的 merchantId：参数 > token
+        Long targetMerchantId;
+        if (merchantId != null && merchantId > 0) {
+            targetMerchantId = merchantId.longValue();
+        } else {
+            targetMerchantId = securityUtil.getCurrentMerchantId();
+        }
+        log.info("获取商户推广配置(别名) | merchantId: {}, type: {}", targetMerchantId, type);
+
+        List<MerchantPromotionConfigDTO> configs;
+        if (targetMerchantId != null && targetMerchantId > 0) {
+            // 指定商户时，通过 Service 查询（带缓存）并在内存过滤 type
+            List<MerchantPromotionConfigDTO> list = merchantPromotionConfigService.getMerchantConfigs(targetMerchantId);
+            configs = list.stream()
+                    .filter(c -> type == null || type.isEmpty() || type.equalsIgnoreCase(c.getType()))
+                    .collect(Collectors.toList());
+        } else {
+            // 无有效 merchantId 时返回空列表（避免页面报错）
+            configs = new ArrayList<>();
+        }
+        return ApiResponse.success("获取商户推广配置成功", configs);
+    }
+
+    // ==================== 原有推广平台接口（保持不变以兼容性） ====================
 
     /**
      * 获取推广平台列表
@@ -141,11 +200,10 @@ public class PromotionController {
 
         List<MerchantPromotionConfigDTO> configs;
         if (targetMerchantId != null && targetMerchantId > 0) {
-            // 指定商户时，直接从 Mapper 查询并在内存过滤 type
-            List<MerchantPromotionConfig> list = merchantPromotionConfigMapper.selectByMerchantId(targetMerchantId.intValue());
+            // 指定商户时，通过 Service 查询（带缓存）并在内存过滤 type
+            List<MerchantPromotionConfigDTO> list = merchantPromotionConfigService.getMerchantConfigs(targetMerchantId);
             configs = list.stream()
                     .filter(c -> type == null || type.isEmpty() || type.equalsIgnoreCase(c.getType()))
-                    .map(this::convertConfigToDTO)
                     .collect(Collectors.toList());
         } else {
             // 无有效 merchantId 时返回空列表（避免页面报错）
@@ -183,7 +241,10 @@ public class PromotionController {
     @PostMapping("/merchant-configs")
     @PreAuthorize("hasAnyRole('MERCHANT', 'ADMIN', 'SUPER_ADMIN')")
     public ApiResponse<MerchantPromotionConfigDTO> addMerchantConfig(@Valid @RequestBody MerchantPromotionConfigDTO.CreateMerchantConfigRequest request) {
-        Long merchantId = securityUtil.getCurrentMerchantId();
+        Long merchantId = resolveMerchantId(request.getMerchantId());
+        if (merchantId == null) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "缺少商户ID，请先选择商家");
+        }
         log.info("添加商户推广配置 | merchantId: {} | platformId: {}", merchantId, request.getPlatformId());
         MerchantPromotionConfigDTO config = merchantPromotionConfigService.createConfig(merchantId, request);
         return ApiResponse.success("推广配置添加成功", config);
@@ -195,7 +256,7 @@ public class PromotionController {
     @PutMapping("/merchant-configs/{id}")
     @PreAuthorize("hasAnyRole('MERCHANT', 'ADMIN', 'SUPER_ADMIN')")
     public ApiResponse<MerchantPromotionConfigDTO> updateMerchantConfig(@PathVariable Long id, @Valid @RequestBody MerchantPromotionConfigDTO.UpdateMerchantConfigRequest request) {
-        Long merchantId = securityUtil.getCurrentMerchantId();
+        Long merchantId = resolveMerchantId(request.getMerchantId());
         log.info("更新商户推广配置 | id: {} | merchantId: {}", id, merchantId);
         MerchantPromotionConfigDTO config = merchantPromotionConfigService.updateConfig(id, merchantId, request);
         return ApiResponse.success("推广配置更新成功", config);
@@ -206,11 +267,24 @@ public class PromotionController {
      */
     @DeleteMapping("/merchant-configs/{id}")
     @PreAuthorize("hasAnyRole('MERCHANT', 'ADMIN', 'SUPER_ADMIN')")
-    public ApiResponse<Void> deleteMerchantConfig(@PathVariable Long id) {
-        Long merchantId = securityUtil.getCurrentMerchantId();
-        log.info("删除商户推广配置 | id: {} | merchantId: {}", id, merchantId);
-        merchantPromotionConfigService.deleteConfig(id, merchantId);
+    public ApiResponse<Void> deleteMerchantConfig(@PathVariable Long id,
+                                                  @RequestParam(required = false) Long merchantId) {
+        Long targetMerchantId = resolveMerchantId(merchantId);
+        log.info("删除商户推广配置 | id: {} | merchantId: {}", id, targetMerchantId);
+        merchantPromotionConfigService.deleteConfig(id, targetMerchantId);
         return ApiResponse.success("推广配置删除成功", null);
+    }
+
+    /**
+     * 解析目标商户ID：管理员/超管优先使用请求中指定商户，商户角色取登录态
+     */
+    private Long resolveMerchantId(Long requestedMerchantId) {
+        if (securityUtil.isAdmin()) {
+            if (requestedMerchantId != null && requestedMerchantId > 0) {
+                return requestedMerchantId;
+            }
+        }
+        return securityUtil.getCurrentMerchantId();
     }
 
     // ==================== 辅助方法：Entity -> DTO 转换 ====================

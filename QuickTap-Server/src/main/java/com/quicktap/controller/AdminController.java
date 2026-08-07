@@ -175,7 +175,7 @@ import java.util.List;
 @Slf4j
 @RestController
 @RequestMapping("/api/admin")
-@CrossOrigin(origins = "*", maxAge = 3600)
+
 @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
 public class AdminController {
 
@@ -220,8 +220,10 @@ public class AdminController {
 
     /**
      * 更新管理员信息
+     * 仅超级管理员可操作（避免普通管理员越权修改他人角色/状态）
      */
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ApiResponse<Admin> updateAdmin(@PathVariable Integer id,
                                           @RequestBody AdminUpdateRequest request) {
         log.info("更新管理员: id={}", id);
@@ -243,8 +245,10 @@ public class AdminController {
 
     /**
      * 禁用管理员
+     * 仅超级管理员可操作
      */
     @PutMapping("/{id}/disable")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ApiResponse<Void> disableAdmin(@PathVariable Integer id) {
         log.info("禁用管理员: id={}", id);
         adminService.disableAdmin(id);
@@ -253,8 +257,10 @@ public class AdminController {
 
     /**
      * 启用管理员
+     * 仅超级管理员可操作
      */
     @PutMapping("/{id}/enable")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ApiResponse<Void> enableAdmin(@PathVariable Integer id) {
         log.info("启用管理员: id={}", id);
         adminService.enableAdmin(id);
@@ -263,8 +269,10 @@ public class AdminController {
 
     /**
      * 重置管理员密码
+     * 仅超级管理员可操作
      */
     @PutMapping("/{id}/reset-password")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ApiResponse<Void> resetPassword(@PathVariable Integer id,
                                             @RequestBody java.util.Map<String, String> body) {
         String password = body.get("password");

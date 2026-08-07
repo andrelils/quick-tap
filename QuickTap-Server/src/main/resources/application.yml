@@ -3,6 +3,7 @@ spring:
     name: quicktap-server
   profiles:
     active: dev
+#    active: prod
 
   # ============================================
   # Redis 总开关（REDIS_ENABLED 环境变量控制）

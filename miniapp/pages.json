@@ -9,7 +9,7 @@
     {
       "path": "pages/index/index",
       "style": {
-        "navigationBarTitleText": "晓居智能",
+        "navigationBarTitleText": "碰一碰好评卡",
         "navigationStyle": "custom"
       }
     },
@@ -60,7 +60,7 @@
   ],
   "globalStyle": {
     "navigationBarTextStyle": "black",
-    "navigationBarTitleText": "晓居智能",
+    "navigationBarTitleText": "碰一碰好评卡",
     "navigationBarBackgroundColor": "#ffffff",
     "backgroundColor": "#f5f6fa"
   },

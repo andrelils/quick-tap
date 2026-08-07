@@ -25,4 +25,5 @@ public class Coupon extends BaseEntity {
     private LocalDateTime endTime;  // 有效期结束
     private Integer status;         // 状态：1启用/0停用
     private String link;            // 第三方平台跳转链接，用户点击后跳转到此链接领取优惠券
+    private String description;     // 使用说明
 }

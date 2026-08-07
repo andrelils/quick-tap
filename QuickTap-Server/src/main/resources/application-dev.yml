@@ -1,9 +1,10 @@
 spring:
   datasource:
-    # 开发环境：连接到远程 MySQL 数据库
-    url: jdbc:mysql://154.8.138.48:3306/andre_sql?useUnicode=true&characterEncoding=UTF-8&connectionCollation=utf8mb4_unicode_ci&allowMultiQueries=true&zeroDateTimeBehavior=convertToNull&serverTimezone=GMT%2B8
+    # 开发环境：通过环境变量或 .env.local 配置数据库连接，避免敏感信息入库
+    # 本地开发可在 IDE 启动配置或 .env.local 中设置 DB_HOST/DB_NAME/DB_USERNAME/DB_PASSWORD
+    url: jdbc:mysql://${DB_HOST:154.8.138.48}:${DB_PORT:3306}/${DB_NAME:andre_sql}?useUnicode=true&characterEncoding=UTF-8&connectionCollation=utf8mb4_unicode_ci&allowMultiQueries=true&zeroDateTimeBehavior=convertToNull&serverTimezone=GMT%2B8
     username: ${DB_USERNAME:andre_sql}
-    password: "${DB_PASSWORD:lls_970401}"
+    password: ${DB_PASSWORD:lls_970401}
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       maximum-pool-size: 10
@@ -88,7 +89,9 @@ seata:
 jwt:
   # 开发环境默认密钥（仅用于本地开发，生产环境必须通过 JWT_SECRET 环境变量设置）
   secret: ${JWT_SECRET:QuickTapDevJwtSecretKeyForDevelopmentOnlyDoNotUseInProduction2026}
-  expiration: 604800000  # 7天（毫秒）
+  # Access Token 有效期 2 小时（毫秒），缩短有效期降低 Token 泄露风险
+  # Token 刷新通过 /api/refresh-token 接口完成
+  expiration: 7200000  # 2小时（毫秒）
   header: Authorization
   prefix: Bearer
 
@@ -142,7 +145,8 @@ logging:
   level:
     root: INFO
     com.quicktap: DEBUG
-    org.springframework.security: DEBUG
+    # 安全日志降为 WARN，避免开发环境输出大量过滤器调试信息及 Token 相关敏感信息
+    org.springframework.security: WARN
   pattern:
     console: "[%d{yyyy-MM-dd HH:mm:ss.SSS}] [%logger{36}] [%X{traceId}] [%thread] [%-5level] %msg%n"
     file: "[%d{yyyy-MM-dd HH:mm:ss.SSS}] [%logger{36}] [%X{traceId}] [%thread] [%-5level] %msg%n"

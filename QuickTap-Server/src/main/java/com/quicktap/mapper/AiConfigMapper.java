@@ -2,6 +2,9 @@ package com.quicktap.mapper;
 
 import com.quicktap.entity.AiConfig;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+
+import java.util.List;
 
 /**
  * AI 配置 Mapper (XML配置)
@@ -28,6 +31,16 @@ public interface AiConfigMapper {
      * 查询商户级配置
      */
     AiConfig selectByMerchantId(Long merchantId);
+
+    /**
+     * 分页查询所有商户级配置（merchant_id IS NOT NULL）
+     */
+    List<AiConfig> selectMerchantPage(@Param("offset") int offset, @Param("pageSize") int pageSize);
+
+    /**
+     * 统计商户级配置总数
+     */
+    long countMerchantConfigs();
 
     /**
      * 更新 AI 配置

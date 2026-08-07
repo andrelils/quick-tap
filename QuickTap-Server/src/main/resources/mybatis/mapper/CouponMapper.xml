@@ -16,6 +16,7 @@
         <result column="end_time" property="endTime"/>
         <result column="status" property="status"/>
         <result column="link" property="link"/>
+        <result column="description" property="description"/>
         <result column="created_at" property="createdAt"/>
         <result column="updated_at" property="updatedAt"/>
     </resultMap>
@@ -37,8 +38,8 @@
     </select>
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO coupon (merchant_id, title, type, amount, min_amount, total_count, remain_count, start_time, end_time, status, link, created_at, updated_at)
-        VALUES (#{merchantId}, #{title}, #{type}, #{amount}, #{minAmount}, #{totalCount}, #{remainCount}, #{startTime}, #{endTime}, #{status}, #{link}, NOW(), NOW())
+        INSERT INTO coupon (merchant_id, title, type, amount, min_amount, total_count, remain_count, start_time, end_time, status, link, description, created_at, updated_at)
+        VALUES (#{merchantId}, #{title}, #{type}, #{amount}, #{minAmount}, #{totalCount}, #{remainCount}, #{startTime}, #{endTime}, #{status}, #{link}, #{description}, NOW(), NOW())
     </insert>
 
     <update id="update">
@@ -54,6 +55,7 @@
         end_time = #{endTime},
         status = #{status},
         link = #{link},
+        description = #{description},
         updated_at = NOW()
         WHERE id = #{id}
     </update>
@@ -68,6 +70,20 @@
 
     <select id="countAll" resultType="long">
         SELECT COUNT(*) FROM coupon
+    </select>
+
+    <!-- 获取用户已领取的卡券列表 (通过 user_coupons 关联表) -->
+    <select id="selectUserCoupons" resultMap="CouponResultMap">
+        SELECT c.* FROM coupon c
+        INNER JOIN user_coupons uc ON c.id = uc.coupon_id
+        WHERE uc.user_id = #{userId}
+        ORDER BY uc.created_at DESC
+        LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <!-- 统计用户已领取的卡券数量 -->
+    <select id="countUserCoupons" resultType="long">
+        SELECT COUNT(*) FROM user_coupons WHERE user_id = #{userId}
     </select>
 
     <!-- 按商户ID和状态查询 -->

@@ -1,6 +1,7 @@
 package com.quicktap.security;
 
 import com.quicktap.service.TokenBlacklistService;
+import com.quicktap.utils.IpUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -88,19 +89,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Autowired
     private TokenBlacklistService tokenBlacklistService;
 
+    @Autowired
+    private IpUtil ipUtil;
+
     // 授权请求头常量
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String BEARER_PREFIX = "Bearer ";
     private static final int BEARER_PREFIX_LENGTH = BEARER_PREFIX.length();
-
-    /**
-     * 静态资源路径不需要 JWT 认证，直接跳过过滤器
-     */
-    @Override
-    protected boolean shouldNotFilter(HttpServletRequest request) {
-        String path = request.getRequestURI();
-        return path != null && (path.contains("/uploads/"));
-    }
 
     /**
      * 从请求头中获取 JWT token
@@ -149,6 +144,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         // 认证逻辑：成功则设置 SecurityContext，失败则保持匿名
         // doFilter 只在最末尾调用一次，避免重复执行下游过滤器
+        String clientIp = IpUtil.getClientIp(request);
+
         try {
             String jwt = getJwtFromRequest(request);
 
@@ -159,13 +156,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             // 验证 token 签名与有效期
             if (!tokenProvider.validateToken(jwt)) {
-                log.debug("JWT token 验证失败");
+                log.warn("JWT token 验证失败，来源IP: {}", clientIp);
                 return;
             }
 
             // 检查 token 是否在黑名单中（登出/刷新后的旧 token）
             if (tokenBlacklistService.isBlacklisted(jwt)) {
-                log.debug("JWT token 已在黑名单中");
+                log.warn("JWT token 已在黑名单中，来源IP: {}", clientIp);
                 return;
             }
 
@@ -174,12 +171,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             try {
                 username = tokenProvider.getUsernameFromToken(jwt);
             } catch (IllegalArgumentException e) {
-                log.warn("从 JWT token 中提取用户名失败: {}", e.getMessage());
+                log.warn("从 JWT token 中提取用户名失败: {}，来源IP: {}", e.getMessage(), clientIp);
                 return;
             }
 
             if (!StringUtils.hasText(username)) {
-                log.warn("JWT token 中的用户名为空");
+                log.warn("JWT token 中的用户名为空，来源IP: {}", clientIp);
                 return;
             }
 
@@ -188,10 +185,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             try {
                 userId = tokenProvider.getUserIdFromToken(jwt);
             } catch (Exception e) {
-                log.debug("从 JWT token 中提取 userId 失败: {}", e.getMessage());
+                log.debug("从 JWT token 中提取 userId 失败: {}，来源IP: {}", e.getMessage(), clientIp);
             }
             if (userId != null && tokenBlacklistService.isUserRevoked(userId)) {
-                log.debug("用户 {} 的 Token 已被撤销（权限变更），需重新登录", userId);
+                log.warn("用户 {} 的 Token 已被撤销（权限变更），来源IP: {}", userId, clientIp);
                 return;
             }
 
@@ -200,20 +197,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             try {
                 userPrincipal = customUserDetailsService.loadUserByUsername(username);
             } catch (UsernameNotFoundException e) {
-                log.warn("用户不存在: {}", username);
+                log.warn("用户不存在: {}，来源IP: {}", username, clientIp);
                 return;
             } catch (Exception e) {
-                log.error("加载用户信息失败: {} - {}", username, e.getMessage());
+                log.error("加载用户信息失败: {} - {}，来源IP: {}", username, e.getMessage(), clientIp);
                 return;
             }
 
             if (userPrincipal == null) {
-                log.error("用户主体对象为 null: {}", username);
+                log.error("用户主体对象为 null: {}，来源IP: {}", username, clientIp);
                 return;
             }
 
             if (userPrincipal.getAuthorities() == null || userPrincipal.getAuthorities().isEmpty()) {
-                log.warn("用户没有任何权限: {}", username);
+                log.warn("用户没有任何权限: {}，来源IP: {}", username, clientIp);
                 // 继续处理，权限检查由 @PreAuthorize 处理
             }
 
@@ -227,11 +224,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
-            log.debug("用户 '{}' JWT 认证成功", username);
+            log.info("用户 '{}' JWT 认证成功，来源IP: {}", username, clientIp);
 
         } catch (Exception ex) {
             // 捕获所有未预期的异常，防止过滤器链中断
-            log.error("JWT 认证过程中发生未知错误", ex);
+            log.error("JWT 认证过程中发生未知错误，来源IP: {}", clientIp, ex);
             SecurityContextHolder.clearContext();
         } finally {
             // 无论认证成功还是失败，都继续过滤链；doFilter 只调用一次

@@ -1,55 +1,63 @@
 package com.quicktap.exception;
 
+import com.quicktap.common.ErrorCode;
+import lombok.Getter;
+
 /**
- * 业务异常类
- * 用于处理业务逻辑中的异常
+ * Business Logic Exception
+ * Thrown when business rules or validation fail
+ *
+ * Uses centralized ErrorCode enum for consistent error responses.
+ * Each exception has an ErrorCode and optional detailed message.
  */
+@Getter
 public class BusinessException extends RuntimeException {
 
-    /**
-     * 错误码
-     */
-    private Integer code;
+    private final ErrorCode errorCode;
+    private final String detail;
 
     /**
-     * 错误消息
+     * Create exception with error code only
+     * Uses error code's default message
      */
-    private String message;
-
-    public BusinessException(String message) {
-        this(400, message);
+    public BusinessException(ErrorCode errorCode) {
+        super(errorCode.getMessage());
+        this.errorCode = errorCode;
+        this.detail = null;
     }
 
-    public BusinessException(Integer code, String message) {
-        super(message);
-        this.code = code;
-        this.message = message;
+    /**
+     * Create exception with error code and detailed message
+     * Detailed message provides additional context
+     */
+    public BusinessException(ErrorCode errorCode, String detail) {
+        super(errorCode.getMessage() + (detail != null ? ": " + detail : ""));
+        this.errorCode = errorCode;
+        this.detail = detail;
     }
 
-    public BusinessException(String message, Throwable cause) {
-        this(400, message, cause);
+    /**
+     * Create exception with error code and cause
+     */
+    public BusinessException(ErrorCode errorCode, Throwable cause) {
+        super(errorCode.getMessage(), cause);
+        this.errorCode = errorCode;
+        this.detail = null;
     }
 
-    public BusinessException(Integer code, String message, Throwable cause) {
-        super(message, cause);
-        this.code = code;
-        this.message = message;
+    /**
+     * Create exception with error code, detailed message, and cause
+     */
+    public BusinessException(ErrorCode errorCode, String detail, Throwable cause) {
+        super(errorCode.getMessage() + (detail != null ? ": " + detail : ""), cause);
+        this.errorCode = errorCode;
+        this.detail = detail;
     }
 
-    public Integer getCode() {
-        return code;
-    }
-
-    public void setCode(Integer code) {
-        this.code = code;
-    }
-
-    @Override
-    public String getMessage() {
-        return message;
-    }
-
-    public void setMessage(String message) {
-        this.message = message;
+    /**
+     * Get error code as string (for backward compatibility)
+     */
+    public String getCode() {
+        return errorCode.getCode();
     }
 }

@@ -49,6 +49,17 @@
           <a-tag color="blue">共 {{ pagination.total }} 家</a-tag>
         </div>
         <div class="table-actions">
+          <a-space v-if="selectedRowKeys.length > 0" style="margin-right: 12px">
+            <a-button danger :icon="h(LockOutlined)" @click="handleBatchDisable">
+              禁用 ({{ selectedRowKeys.length }})
+            </a-button>
+            <a-button :icon="h(UnlockOutlined)" @click="handleBatchEnable">
+              启用 ({{ selectedRowKeys.length }})
+            </a-button>
+            <a-button danger :icon="h(DeleteOutlined)" @click="handleBatchDelete">
+              删除 ({{ selectedRowKeys.length }})
+            </a-button>
+          </a-space>
           <a-button type="primary" @click="handleAdd">
             <template #icon><PlusOutlined /></template>
             新增商家
@@ -62,6 +73,7 @@
         :pagination="false"
         :row-key="record => record.id"
         :scroll="{ x: 1300 }"
+        :row-selection="{ selectedRowKeys, onChange: onSelectChange }"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'logo'">
@@ -95,26 +107,9 @@
             <a-space size="small">
               <a type="link" size="small" @click="handleDetail(record)">详情</a>
               <a type="link" size="small" @click="handleEdit(record)">编辑</a>
-              <a-popconfirm
-                title="确定要删除该商家吗？"
-                @confirm="handleDelete(record)"
-              >
-                <a type="link" size="small" :danger="true">删除</a>
-              </a-popconfirm>
-              <a-popconfirm
-                v-if="record.status === 1"
-                title="确定要禁用该商家吗？"
-                @confirm="handleStatus(record)"
-              >
-                <a type="link" size="small" :danger="true">禁用</a>
-              </a-popconfirm>
-              <a-popconfirm
-                v-else-if="record.status === 0"
-                title="确定要启用该商家吗？"
-                @confirm="handleStatus(record)"
-              >
-                <a type="link" size="small">启用</a>
-              </a-popconfirm>
+              <a type="link" size="small" :danger="true" @click="handleDelete(record)">删除</a>
+              <a v-if="record.status === 1" type="link" size="small" :danger="true" @click="handleStatus(record)">禁用</a>
+              <a v-else-if="record.status === 0" type="link" size="small" @click="handleStatus(record)">启用</a>
             </a-space>
           </template>
         </template>
@@ -260,19 +255,26 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed, h } from 'vue'
 import { useRouter } from 'vue-router'
-import { message } from 'ant-design-vue'
+import { message, Modal } from 'ant-design-vue'
 import dayjs from 'dayjs'
 import {
   SearchOutlined,
   ReloadOutlined,
   PlusOutlined,
-  UploadOutlined
+  UploadOutlined,
+  DeleteOutlined,
+  LockOutlined,
+  UnlockOutlined
 } from '@ant-design/icons-vue'
 import { getMerchantList, createMerchant, updateMerchant, deleteMerchant, updateMerchantStatus, getMerchantStorage } from '@/api/merchant'
+import { usePageStore } from '@/store/page'
+import { getErrorMessage, getContextErrorMessage } from '@/utils/errorMessage'
+import { isSuccessCode } from '@/utils/request'
 
 const router = useRouter()
+const pageStore = usePageStore()
 
 const searchForm = reactive({
   keyword: '',
@@ -305,6 +307,8 @@ const modalTitle = ref('新增商家')
 const submitting = ref(false)
 const formRef = ref()
 const isEdit = ref(false)
+const selectedRowKeys = ref([])
+const selectedRows = ref([])
 
 const formData = reactive({
   id: null,
@@ -355,12 +359,14 @@ const beforeUpload = (file) => {
 const handleUploadChange = (info) => {
   if (info.file.status === 'done') {
     const res = info.file.response
-    if (res && res.code === 0 && res.data) {
+    if (isSuccessCode(res)) {
       formData.logo = res.data.url
       if (info.fileList && info.fileList.length > 0) {
         const lastFile = info.fileList[info.fileList.length - 1]
-        lastFile.url = res.data.url
-        lastFile.thumbUrl = res.data.url
+        if (lastFile) {
+          lastFile.url = res.data.url
+          lastFile.thumbUrl = res.data.url
+        }
       }
       message.success('上传成功')
     } else {
@@ -381,9 +387,9 @@ const handleUploadRemove = () => {
 const handleBannerUploadChange = (info) => {
   if (info.file.status === 'done') {
     const res = info.file.response
-    if (res && res.code === 0 && res.data) {
+    if (isSuccessCode(res)) {
       formData.bannerImages = bannerFileList.value
-        .filter(f => f.status === 'done' && f.response?.code === 0)
+        .filter(f => f.status === 'done' && isSuccessCode(f.response))
         .map(f => f.response.data.url)
       if (info.file.uid === info.fileList[info.fileList.length - 1]?.uid) {
         message.success('上传成功')
@@ -400,7 +406,7 @@ const handleBannerUploadChange = (info) => {
 
 const handleBannerRemove = (file) => {
   formData.bannerImages = bannerFileList.value
-    .filter(f => f.uid !== file.uid && f.status === 'done' && f.response?.code === 0)
+    .filter(f => f.uid !== file.uid && f.status === 'done' && isSuccessCode(f.response))
     .map(f => f.response.data.url)
   return true
 }
@@ -409,9 +415,9 @@ const handleBannerRemove = (file) => {
 const handleShopUploadChange = (info) => {
   if (info.file.status === 'done') {
     const res = info.file.response
-    if (res && res.code === 0 && res.data) {
+    if (isSuccessCode(res)) {
       formData.shopImages = shopFileList.value
-        .filter(f => f.status === 'done' && f.response?.code === 0)
+        .filter(f => f.status === 'done' && isSuccessCode(f.response))
         .map(f => f.response.data.url)
       if (info.file.uid === info.fileList[info.fileList.length - 1]?.uid) {
         message.success('上传成功')
@@ -428,7 +434,7 @@ const handleShopUploadChange = (info) => {
 
 const handleShopRemove = (file) => {
   formData.shopImages = shopFileList.value
-    .filter(f => f.uid !== file.uid && f.status === 'done' && f.response?.code === 0)
+    .filter(f => f.uid !== file.uid && f.status === 'done' && isSuccessCode(f.response))
     .map(f => f.response.data.url)
   return true
 }
@@ -477,6 +483,7 @@ const loadData = async () => {
     pagination.total = res.total
   } catch (e) {
     console.error('加载数据失败', e)
+    message.error(getContextErrorMessage(e, '加载'))
   } finally {
     loading.value = false
   }
@@ -495,6 +502,13 @@ const handleReset = () => {
 }
 
 const handlePageChange = () => {
+  // Save pagination state when user changes page
+  pageStore.setPageState('merchant-list', {
+    current: pagination.current,
+    pageSize: pagination.pageSize,
+    keyword: searchForm.keyword,
+    status: searchForm.status
+  })
   loadData()
 }
 
@@ -535,6 +549,13 @@ const parseImages = (v) => {
 }
 
 const handleDetail = (record) => {
+  // Save current pagination and filter state before navigating
+  pageStore.setPageState('merchant-list', {
+    current: pagination.current,
+    pageSize: pagination.pageSize,
+    keyword: searchForm.keyword,
+    status: searchForm.status
+  })
   router.push(`/merchant/detail/${record.id}`)
 }
 
@@ -586,31 +607,186 @@ const handleView = (record) => {
 }
 
 const handleStatus = async (record) => {
-  try {
-    const newStatus = record.status === 1 ? 0 : 1
-    await updateMerchantStatus(record.id, newStatus)
-    message.success(`${newStatus === 1 ? '启用' : '禁用'}成功`)
-    loadData()
-  } catch (e) {
-    console.error('操作失败', e)
-  }
+  const newStatus = record.status === 1 ? 0 : 1
+  const actionText = newStatus === 1 ? '启用' : '禁用'
+
+  Modal.confirm({
+    title: `${actionText}商家`,
+    content: h('div', [
+      h('p', `确定要${actionText}以下商家吗？`),
+      h('div', { style: 'background: #f5f5f5; padding: 12px; border-radius: 4px; margin-top: 12px' }, [
+        h('div', { style: 'font-weight: 600; margin-bottom: 8px' }, '商家名称'),
+        h('div', record.name)
+      ])
+    ]),
+    okText: '确定',
+    cancelText: '取消',
+    okButtonProps: { danger: newStatus === 0 },
+    onOk: async () => {
+      try {
+        await updateMerchantStatus(record.id, newStatus)
+        message.success(`${actionText}成功`)
+        loadData()
+      } catch (e) {
+        console.error('操作失败', e)
+        message.error(getErrorMessage(e) || '操作失败')
+      }
+    }
+  })
 }
 
 const handleDelete = async (record) => {
-  try {
-    await deleteMerchant(record.id)
-    message.success('删除成功')
-    loadData()
-  } catch (e) {
-    console.error('删除失败', e)
+  Modal.confirm({
+    title: '删除商家',
+    content: h('div', [
+      h('p', { style: 'color: #ff4d4f; font-weight: 600; margin-bottom: 12px' }, '⚠️ 确定要删除该商家吗？删除后将无法恢复。'),
+      h('div', { style: 'background: #f5f5f5; padding: 12px; border-radius: 4px' }, [
+        h('div', { style: 'font-weight: 600; margin-bottom: 8px' }, '商家名称'),
+        h('div', { style: 'margin-bottom: 12px' }, record.name),
+        h('div', { style: 'font-weight: 600; margin-bottom: 8px' }, '联系电话'),
+        h('div', record.contact_phone || '--')
+      ])
+    ]),
+    okText: '确定删除',
+    cancelText: '取消',
+    okButtonProps: { danger: true },
+    onOk: async () => {
+      try {
+        await deleteMerchant(record.id)
+        message.success('删除成功')
+        loadData()
+      } catch (e) {
+        console.error('删除失败', e)
+        message.error(getErrorMessage(e) || '删除失败')
+      }
+    }
+  })
+}
+
+const onSelectChange = (keys, rows) => {
+  selectedRowKeys.value = keys
+  selectedRows.value = rows
+}
+
+const handleBatchEnable = () => {
+  if (selectedRowKeys.value.length === 0) return
+
+  const disabledCount = selectedRows.value.filter(r => r.status === 0).length
+  if (disabledCount === 0) {
+    message.warning('所选商家都已启用')
+    return
   }
+
+  Modal.confirm({
+    title: '批量启用商家',
+    content: h('div', [
+      h('p', `确定要启用所选 ${disabledCount} 家商家吗？`),
+      h('div', { style: 'background: #f5f5f5; padding: 12px; border-radius: 4px; margin-top: 12px; max-height: 200px; overflow-y: auto' }, [
+        h('div', { style: 'font-weight: 600; margin-bottom: 8px' }, '待启用商家'),
+        ...selectedRows.value
+          .filter(r => r.status === 0)
+          .map((r, idx) => h('div', { style: 'padding: 4px 0; border-bottom: idx < disabledCount - 1 ? "1px solid #e8e8e8" : "none"' }, r.name))
+      ])
+    ]),
+    okText: '确定启用',
+    cancelText: '取消',
+    onOk: async () => {
+      try {
+        const promises = selectedRows.value
+          .filter(r => r.status === 0)
+          .map(r => updateMerchantStatus(r.id, 1))
+
+        await Promise.all(promises)
+        message.success(`批量启用成功，共 ${disabledCount} 家`)
+        selectedRowKeys.value = []
+        selectedRows.value = []
+        loadData()
+      } catch (e) {
+        console.error('操作失败', e)
+        message.error(getErrorMessage(e) || '操作失败')
+      }
+    }
+  })
+}
+
+const handleBatchDisable = () => {
+  if (selectedRowKeys.value.length === 0) return
+
+  const enabledCount = selectedRows.value.filter(r => r.status === 1).length
+  if (enabledCount === 0) {
+    message.warning('所选商家都已禁用')
+    return
+  }
+
+  Modal.confirm({
+    title: '批量禁用商家',
+    content: h('div', [
+      h('p', { style: 'color: #ff4d4f; font-weight: 600' }, `⚠️ 确定要禁用所选 ${enabledCount} 家商家吗？`),
+      h('div', { style: 'background: #f5f5f5; padding: 12px; border-radius: 4px; margin-top: 12px; max-height: 200px; overflow-y: auto' }, [
+        h('div', { style: 'font-weight: 600; margin-bottom: 8px' }, '待禁用商家'),
+        ...selectedRows.value
+          .filter(r => r.status === 1)
+          .map((r, idx) => h('div', { style: 'padding: 4px 0; border-bottom: idx < enabledCount - 1 ? "1px solid #e8e8e8" : "none"' }, r.name))
+      ])
+    ]),
+    okText: '确定禁用',
+    cancelText: '取消',
+    okButtonProps: { danger: true },
+    onOk: async () => {
+      try {
+        const promises = selectedRows.value
+          .filter(r => r.status === 1)
+          .map(r => updateMerchantStatus(r.id, 0))
+
+        await Promise.all(promises)
+        message.success(`批量禁用成功，共 ${enabledCount} 家`)
+        selectedRowKeys.value = []
+        selectedRows.value = []
+        loadData()
+      } catch (e) {
+        console.error('操作失败', e)
+        message.error(getErrorMessage(e) || '操作失败')
+      }
+    }
+  })
+}
+
+const handleBatchDelete = () => {
+  if (selectedRowKeys.value.length === 0) return
+
+  Modal.confirm({
+    title: '批量删除商家',
+    content: h('div', [
+      h('p', { style: 'color: #ff4d4f; font-weight: 600; margin-bottom: 12px' }, `⚠️ 确定要删除所选 ${selectedRowKeys.value.length} 家商家吗？删除后将无法恢复。`),
+      h('div', { style: 'background: #f5f5f5; padding: 12px; border-radius: 4px; max-height: 200px; overflow-y: auto' }, [
+        h('div', { style: 'font-weight: 600; margin-bottom: 8px' }, '待删除商家'),
+        ...selectedRows.value.map((r, idx) => h('div', { style: 'padding: 4px 0; border-bottom: idx < selectedRows.value.length - 1 ? "1px solid #e8e8e8" : "none"' }, r.name))
+      ])
+    ]),
+    okText: '确定删除',
+    cancelText: '取消',
+    okButtonProps: { danger: true },
+    onOk: async () => {
+      try {
+        const promises = selectedRows.value.map(r => deleteMerchant(r.id))
+        await Promise.all(promises)
+        message.success(`批量删除成功，共 ${selectedRowKeys.value.length} 家`)
+        selectedRowKeys.value = []
+        selectedRows.value = []
+        loadData()
+      } catch (e) {
+        console.error('操作失败', e)
+        message.error(getErrorMessage(e) || '删除失败')
+      }
+    }
+  })
 }
 
 const handleSubmit = async () => {
   try {
     await formRef.value.validate()
     submitting.value = true
-    
+
     const payload = {
       name: formData.name,
       logo: formData.logo,
@@ -625,7 +801,7 @@ const handleSubmit = async () => {
       shopImages: formData.shopImages || [],
       status: formData.status
     }
-    
+
     if (isEdit.value) {
       await updateMerchant(formData.id, payload)
       message.success('编辑成功')
@@ -633,17 +809,38 @@ const handleSubmit = async () => {
       await createMerchant(payload)
       message.success('新增成功')
     }
-    
+
     modalVisible.value = false
     loadData()
   } catch (e) {
     console.error('表单提交失败', e)
+    if (e.response?.status === 422 || e.response?.data?.validationErrors) {
+      // Handle validation errors
+      message.error('请检查表单信息是否完整')
+    } else {
+      message.error(getErrorMessage(e) || '提交失败')
+    }
   } finally {
     submitting.value = false
   }
 }
 
 onMounted(() => {
+  // Try to restore pagination and filter state from previous visit
+  const savedState = pageStore.getPageState('merchant-list')
+  if (savedState) {
+    // Restore pagination
+    pagination.current = savedState.current || 1
+    pagination.pageSize = savedState.pageSize || 10
+
+    // Restore search filters
+    searchForm.keyword = savedState.keyword || ''
+    searchForm.status = savedState.status !== undefined ? savedState.status : undefined
+
+    // Mark that we're returning to this page
+    pageStore.setLastVisitedPage('merchant-list')
+  }
+
   loadData()
 })
 </script>

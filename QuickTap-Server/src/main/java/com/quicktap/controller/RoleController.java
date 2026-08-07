@@ -160,7 +160,7 @@ import java.util.*;
 @Slf4j
 @RestController
 @RequestMapping("/api/admin/roles")
-@CrossOrigin(origins = "*", maxAge = 3600)
+
 @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
 @RequiredArgsConstructor
 public class RoleController {

@@ -6,10 +6,9 @@ import com.quicktap.dto.DeviceCreateRequest;
 import com.quicktap.dto.DeviceUpdateRequest;
 import com.quicktap.entity.Device;
 import com.quicktap.service.DeviceService;
+import com.quicktap.service.MerchantService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -43,9 +42,7 @@ import java.util.stream.Collectors;
 @Validated
 public class DeviceController {
     private final DeviceService deviceService;
-
-    @Autowired
-    private JdbcTemplate jdbcTemplate;
+    private final MerchantService merchantService;
 
     // ============================================================================
     // STATIC ROUTES - All static routes must come before dynamic routes
@@ -81,21 +78,8 @@ public class DeviceController {
                 .distinct()
                 .collect(Collectors.toList());
 
-        // 批量查询商家名称
-        Map<Integer, String> merchantNameMap = new HashMap<>();
-        if (!merchantIds.isEmpty()) {
-            String placeholders = merchantIds.stream().map(id -> "?").collect(Collectors.joining(","));
-            List<Map<String, Object>> merchantRows = jdbcTemplate.queryForList(
-                    "SELECT id, name FROM merchant WHERE id IN (" + placeholders + ")",
-                    merchantIds.toArray());
-            for (Map<String, Object> row : merchantRows) {
-                Integer id = row.get("id") != null ? ((Number) row.get("id")).intValue() : null;
-                String name = row.get("name") != null ? String.valueOf(row.get("name")) : null;
-                if (id != null) {
-                    merchantNameMap.put(id, name);
-                }
-            }
-        }
+        // 通过 Service 批量查询商家名称（避免 Controller 直接使用 JdbcTemplate）
+        Map<Integer, String> merchantNameMap = merchantService.getMerchantNameMap(merchantIds);
 
         Map<String, Map<String, Object>> setMap = new java.util.LinkedHashMap<>();
         for (Device d : devices) {

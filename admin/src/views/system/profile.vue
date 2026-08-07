@@ -9,7 +9,22 @@
       <a-col :xs="24" :sm="24" :md="8" :lg="8">
         <div class="card-wrapper profile-card">
           <div class="avatar-section">
-            <a-avatar :size="100" src="/vite.svg" />
+            <div class="avatar-wrapper">
+              <a-avatar :size="100" :src="userInfo.avatar || '/vite.svg'" />
+              <a-upload
+                ref="avatarUploadRef"
+                :action="`${apiBaseUrl}/user/avatar`"
+                :headers="uploadHeaders"
+                :show-upload-list="false"
+                @change="handleAvatarChange"
+                style="display: none"
+              >
+                <template #default>
+                  <input type="file" />
+                </template>
+              </a-upload>
+              <div class="avatar-clickable" @dblclick="triggerAvatarUpload" style="position: absolute; width: 100px; height: 100px; cursor: pointer; top: 0; left: 0;"></div>
+            </div>
             <div class="user-name">{{ userInfo.username }}</div>
           <div class="user-role">{{ roleTextMap[userInfo.role] || userInfo.role }}</div>
           </div>
@@ -127,11 +142,20 @@ import { useUserStore } from '@/store/user'
 
 const userStore = useUserStore()
 
+// API配置
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8222/api'
+const token = localStorage.getItem('token') || ''
+const uploadHeaders = {
+  'Authorization': `Bearer ${token}`
+}
+
 const activeTab = ref('basic')
 const saving = ref(false)
 const passwordSaving = ref(false)
+const avatarUploading = ref(false)
 const formRef = ref()
 const passwordFormRef = ref()
+const avatarUploadRef = ref()
 
 const userInfo = reactive({
   username: '',
@@ -139,6 +163,7 @@ const userInfo = reactive({
   phone: '',
   email: '',
   role: '',
+  avatar: '',
   loginDays: 0,
   operationCount: 0
 })
@@ -199,6 +224,7 @@ const loadUserInfo = async () => {
       phone: data.phone || data.mobile || '',
       email: data.email || '',
       role: data.role || '',
+      avatar: data.avatar || '',
       loginDays: data.loginDays || 0,
       operationCount: data.operationCount || 0
     })
@@ -216,6 +242,47 @@ const loadUserInfo = async () => {
 
 const loadLogList = async () => {
   logList.value = []
+}
+
+const triggerAvatarUpload = () => {
+  if (avatarUploadRef.value?.$el) {
+    const input = avatarUploadRef.value.$el.querySelector('input[type=file]')
+    if (input) {
+      input.click()
+    }
+  }
+}
+
+const handleAvatarChange = async (info) => {
+  const { file } = info
+  if (file.status === 'done') {
+    const response = file.response
+    if (response?.data?.url) {
+      const avatarUrl = response.data.url
+      // 将新头像URL保存到数据库
+      try {
+        await updateUserInfo({
+          avatar: avatarUrl,
+          nickname: formData.nickname,
+          phone: formData.phone,
+          email: formData.email,
+          remark: formData.remark
+        })
+        // 更新本地状态
+        userInfo.avatar = avatarUrl
+        // 刷新用户信息确保同步
+        await userStore.fetchUserInfo?.()
+        message.success('头像上传成功')
+      } catch (e) {
+        console.error('保存头像失败', e)
+        message.error('头像保存失败，请重试')
+      }
+    } else if (response?.message) {
+      message.error(response.message)
+    }
+  } else if (file.status === 'error') {
+    message.error('头像上传失败，请重试')
+  }
 }
 
 const handleSave = async () => {
@@ -280,6 +347,12 @@ onMounted(() => {
   margin-bottom: 24px;
   padding-bottom: 24px;
   border-bottom: 1px solid $border-color;
+}
+
+.avatar-wrapper {
+  position: relative;
+  display: inline-block;
+  margin-bottom: 16px;
 }
 
 .user-name {

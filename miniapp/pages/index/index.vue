@@ -8,7 +8,7 @@
             <u-icon name="thumb-up-fill" color="#fff" size="32"></u-icon>
           </view>
           <view class="logo-text">
-            <text class="title">晓居智能</text>
+            <text class="title">碰一碰好评卡</text>
             <text class="subtitle">NFC智能推广 · 一键好评</text>
           </view>
         </view>
@@ -125,6 +125,7 @@ import { onShow } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store/user'
 import { useAppStore } from '@/store/app'
 import { getPromotionPlatforms } from '@/api/promotion'
+import { checkDeviceInfo } from '@/api/device'
 
 const userStore = useUserStore()
 const appStore = useAppStore()
@@ -132,8 +133,13 @@ const appStore = useAppStore()
 const merchantInfo = ref(null)
 const platforms = ref([])
 const merchantImages = ref([])
+const deviceCheckLoading = ref(false)
+const deviceError = ref(null)
 
-onMounted(() => {
+onMounted(async () => {
+  // 检查设备信息
+  await checkDevice()
+
   if (appStore.currentMerchant) {
     merchantInfo.value = appStore.currentMerchant
     loadPlatforms(appStore.currentMerchant.id)
@@ -146,6 +152,35 @@ onShow(() => {
     loadPlatforms(appStore.currentMerchant.id)
   }
 })
+
+const checkDevice = async () => {
+  deviceCheckLoading.value = true
+  deviceError.value = null
+
+  try {
+    const deviceInfo = await checkDeviceInfo()
+
+    if (deviceInfo && deviceInfo.status === 'inactive') {
+      uni.showModal({
+        title: '设备未激活',
+        content: '请激活设备后再使用此功能',
+        showCancel: false
+      })
+    } else if (deviceInfo && deviceInfo.status === 'error') {
+      deviceError.value = '设备状态异常，请稍后重试'
+      uni.showToast({
+        title: '设备状态异常',
+        icon: 'none'
+      })
+    }
+  } catch (e) {
+    console.error('设备检查失败', e)
+    deviceError.value = '检查设备信息失败'
+    // 不阻断页面显示，仅记录错误
+  } finally {
+    deviceCheckLoading.value = false
+  }
+}
 
 const handleScan = () => {
   // #ifdef MP-WEIXIN

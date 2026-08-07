@@ -334,6 +334,8 @@ const handleSubmit = async () => {
 
     uni.showToast({ title: '注册成功', icon: 'success' })
     setTimeout(() => {
+      // 【修改】注册成功后，直接返回应用首页，而不是进入商家详情
+      // 在首页会重新检查该设备的绑定情况
       uni.redirectTo({ url: '/pages/index/index' })
     }, 1500)
   } catch (e) {

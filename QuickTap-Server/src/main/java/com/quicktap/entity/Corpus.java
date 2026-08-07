@@ -18,9 +18,12 @@ public class Corpus extends BaseEntity {
     private String title;              // 标题
     private String content;            // 内容
     private String category;           // 分类
+    private String type;               // 类型：text/image/video
     private String tags;               // 标签（JSON数组）
     private Integer status;            // 状态：1正常/0删除
     private String imageUrl;           // 缩略图URL
+    private Long fileSize;             // 文件大小(B)
+    private String fileUrl;            // 文件URL
     private Integer viewCount;         // 浏览次数
     private String createdBy;          // 创建人
     private String updatedBy;          // 更新人

@@ -4,9 +4,11 @@ import com.quicktap.dto.PageResponse;
 import com.quicktap.entity.Corpus;
 import com.quicktap.exception.BusinessException;
 import com.quicktap.mapper.CorpusMapper;
+import com.quicktap.common.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 
@@ -186,10 +188,10 @@ public class CorpusService {
      */
     public Corpus createCorpus(Corpus corpus) {
         if (corpus.getTitle() == null || corpus.getTitle().trim().isEmpty()) {
-            throw new BusinessException(400, "标题不能为空");
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "标题不能为空");
         }
         if (corpus.getContent() == null || corpus.getContent().trim().isEmpty()) {
-            throw new BusinessException(400, "内容不能为空");
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "内容不能为空");
         }
 
         corpus.setCorpusId(UUID.randomUUID().toString());
@@ -199,7 +201,7 @@ public class CorpusService {
         int result = corpusMapper.insert(corpus);
         if (result <= 0) {
             log.error("知识库内容创建失败: title={}", corpus.getTitle());
-            throw new BusinessException(500, "创建失败，请稍后重试");
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "创建失败，请稍后重试");
         }
 
         log.info("知识库内容创建成功: corpusId={}, merchantId={}", corpus.getCorpusId(), corpus.getMerchantId());
@@ -212,9 +214,9 @@ public class CorpusService {
      * @return 内容详情
      */
     public Corpus getCorpus(String corpusId) {
-        Corpus corpus = corpusMapper.selectByCorpusId(corpusId);
+        Corpus corpus = findCorpus(corpusId);
         if (corpus == null) {
-            throw new BusinessException(404, "内容不存在");
+            throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "内容不存在");
         }
 
         // 增加浏览次数
@@ -231,18 +233,18 @@ public class CorpusService {
      */
     public Corpus updateCorpus(Corpus corpus) {
         if (corpus.getId() == null) {
-            throw new BusinessException(400, "ID不能为空");
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "ID不能为空");
         }
 
         Corpus existing = corpusMapper.selectById(corpus.getId());
         if (existing == null) {
-            throw new BusinessException(404, "内容不存在");
+            throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "内容不存在");
         }
 
         int result = corpusMapper.update(corpus);
         if (result <= 0) {
             log.error("知识库内容更新失败: corpusId={}", corpus.getCorpusId());
-            throw new BusinessException(500, "更新失败，请稍后重试");
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "更新失败，请稍后重试");
         }
 
         log.info("知识库内容更新成功: corpusId={}", corpus.getCorpusId());
@@ -254,9 +256,9 @@ public class CorpusService {
      * @param corpusId 内容ID
      */
     public void deleteCorpus(String corpusId) {
-        Corpus corpus = corpusMapper.selectByCorpusId(corpusId);
+        Corpus corpus = findCorpus(corpusId);
         if (corpus == null) {
-            throw new BusinessException(404, "内容不存在");
+            throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "内容不存在");
         }
 
         corpus.setStatus(0);  // 标记为删除
@@ -270,18 +272,38 @@ public class CorpusService {
      * @param corpusId 内容ID
      */
     public void permanentDelete(String corpusId) {
-        Corpus corpus = corpusMapper.selectByCorpusId(corpusId);
+        Corpus corpus = findCorpus(corpusId);
         if (corpus == null) {
-            throw new BusinessException(404, "内容不存在");
+            throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "内容不存在");
         }
 
-        int result = corpusMapper.deleteByCorpusId(corpusId);
+        int result = corpusMapper.deleteById(corpus.getId());
         if (result <= 0) {
             log.error("知识库内容永久删除失败: corpusId={}", corpusId);
-            throw new BusinessException(500, "删除失败，请稍后重试");
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "删除失败，请稍后重试");
         }
 
         log.info("知识库内容永久删除成功: corpusId={}", corpusId);
+    }
+
+    /**
+     * 兼容数字 id 与 UUID corpusId 两种定位方式
+     */
+    private Corpus findCorpus(String corpusId) {
+        if (corpusId == null || corpusId.trim().isEmpty()) {
+            return null;
+        }
+        Corpus corpus = null;
+        try {
+            Long numId = Long.parseLong(corpusId.trim());
+            corpus = corpusMapper.selectById(numId.intValue());
+        } catch (NumberFormatException ignored) {
+            // 非数字，按 UUID corpus_id 查询
+        }
+        if (corpus == null) {
+            corpus = corpusMapper.selectByCorpusId(corpusId.trim());
+        }
+        return corpus;
     }
 
     /**
@@ -296,7 +318,25 @@ public class CorpusService {
 
         long total = corpusMapper.countByMerchantId(merchantId);
         List<Corpus> data = corpusMapper.selectByMerchantId(merchantId);
+        return PageResponse.<Corpus>builder()
+            .list(data)
+            .pageNum(pageNum)
+            .pageSize(pageSize)
+            .total(total)
+            .totalPage((int) Math.ceil((double) total / pageSize))
+            .build();
+    }
 
+    /**
+     * 获取所有知识库内容（管理员端，分页）
+     * @param pageNum 页码
+     * @param pageSize 每页大小
+     * @return 分页结果
+     */
+    public PageResponse<Corpus> getAllCorpus(int pageNum, int pageSize) {
+        int offset = (pageNum - 1) * pageSize;
+        List<Corpus> data = corpusMapper.selectPage(offset, pageSize);
+        long total = corpusMapper.countAll();
         return PageResponse.<Corpus>builder()
             .list(data)
             .pageNum(pageNum)
@@ -315,13 +355,13 @@ public class CorpusService {
      */
     public PageResponse<Corpus> getByCategory(String category, int pageNum, int pageSize) {
         if (category == null || category.trim().isEmpty()) {
-            throw new BusinessException(400, "分类不能为空");
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "分类不能为空");
         }
 
         int offset = (pageNum - 1) * pageSize;
-        List<Corpus> data = corpusMapper.selectByCategory(category);
-
-        long total = data.size();
+        // 使用 SQL 分页，避免全量加载到内存
+        List<Corpus> data = corpusMapper.selectByCategoryPage(category, offset, pageSize);
+        long total = corpusMapper.countByCategory(category);
 
         return PageResponse.<Corpus>builder()
             .list(data)
@@ -342,18 +382,9 @@ public class CorpusService {
     public PageResponse<Corpus> getTrash(Integer merchantId, int pageNum, int pageSize) {
         int offset = (pageNum - 1) * pageSize;
 
-//        long total = corpusMapper.countByMerchantId(merchantId);
-        List<Corpus> data = corpusMapper.selectByMerchantId(merchantId);
-
-        // 过滤出已删除的内容
-        List<Corpus> trashData = new ArrayList<>();
-        for (Corpus c : data) {
-            if (c.getStatus() == 0) {
-                trashData.add(c);
-            }
-        }
-
-        long total = trashData.size();
+        // 使用 SQL 分页查询回收站（status=0），避免全量加载后内存过滤
+        List<Corpus> trashData = corpusMapper.selectTrashByMerchantIdPage(merchantId, offset, pageSize);
+        long total = corpusMapper.countTrashByMerchantId(merchantId);
 
         return PageResponse.<Corpus>builder()
             .list(trashData)
@@ -371,13 +402,124 @@ public class CorpusService {
     public void restoreCorpus(String corpusId) {
         Corpus corpus = corpusMapper.selectByCorpusId(corpusId);
         if (corpus == null) {
-            throw new BusinessException(404, "内容不存在");
+            throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "内容不存在");
         }
 
         corpus.setStatus(1);  // 标记为正常
         corpusMapper.update(corpus);
 
         log.info("知识库内容恢复成功: corpusId={}", corpusId);
+    }
+
+    /**
+     * 批量软删除（移入回收站）
+     * @param corpusIds 内容ID列表
+     * @return 成功删除的条数
+     */
+    public int batchDelete(List<String> corpusIds) {
+        if (corpusIds == null || corpusIds.isEmpty()) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "ids 不能为空");
+        }
+        int success = 0;
+        for (String id : corpusIds) {
+            try {
+                Corpus corpus = corpusMapper.selectByCorpusId(id);
+                if (corpus == null) continue;
+                corpus.setStatus(0);
+                corpusMapper.update(corpus);
+                success++;
+            } catch (Exception e) {
+                log.warn("批量删除失败 corpusId={}: {}", id, e.getMessage());
+            }
+        }
+        log.info("批量软删除完成: 总数={}, 成功={}", corpusIds.size(), success);
+        return success;
+    }
+
+    /**
+     * 批量永久删除
+     * @param corpusIds 内容ID列表
+     * @return 成功删除的条数
+     */
+    public int batchPermanentDelete(List<String> corpusIds) {
+        if (corpusIds == null || corpusIds.isEmpty()) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "ids 不能为空");
+        }
+        int success = 0;
+        for (String id : corpusIds) {
+            try {
+                int rows = corpusMapper.deleteByCorpusId(id);
+                if (rows > 0) success++;
+            } catch (Exception e) {
+                log.warn("批量永久删除失败 corpusId={}: {}", id, e.getMessage());
+            }
+        }
+        log.info("批量永久删除完成: 总数={}, 成功={}", corpusIds.size(), success);
+        return success;
+    }
+
+    /**
+     * 批量恢复（从回收站恢复）
+     * @param corpusIds 内容ID列表
+     * @return 成功恢复的条数
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public int batchRestore(List<String> corpusIds) {
+        if (corpusIds == null || corpusIds.isEmpty()) {
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "ids 不能为空");
+        }
+        int success = 0;
+        for (String id : corpusIds) {
+            try {
+                Corpus corpus = corpusMapper.selectByCorpusId(id);
+                if (corpus == null) continue;
+                corpus.setStatus(1);
+                corpusMapper.update(corpus);
+                success++;
+            } catch (Exception e) {
+                log.warn("批量恢复失败 corpusId={}: {}", id, e.getMessage());
+            }
+        }
+        log.info("批量恢复完成: 总数={}, 成功={}", corpusIds.size(), success);
+        return success;
+    }
+
+    /**
+     * 语料存储统计
+     * 用于 CorpusController#getStorage，统计商户语料条目数和估算占用大小
+     * @param merchantId 商户ID
+     * @return { totalSize, usedSize, fileCount, merchantId }
+     */
+    public Map<String, Object> getStorage(Integer merchantId) {
+        Map<String, Object> result = new HashMap<>();
+        if (merchantId == null) {
+            result.put("totalSize", 0);
+            result.put("usedSize", 0);
+            result.put("fileCount", 0);
+            result.put("merchantId", null);
+            return result;
+        }
+
+        List<Corpus> list = corpusMapper.selectByMerchantId(merchantId);
+        // 仅统计正常状态的语料
+        long fileCount = list.stream().filter(c -> c.getStatus() != null && c.getStatus() == 1).count();
+
+        // 估算占用大小（字节）：标题长度 + 内容长度，按 UTF-8 估算
+        long usedBytes = 0;
+        for (Corpus c : list) {
+            if (c.getStatus() == null || c.getStatus() != 1) continue;
+            if (c.getTitle() != null) usedBytes += c.getTitle().getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
+            if (c.getContent() != null) usedBytes += c.getContent().getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
+        }
+        // 转 KB（向上取整，至少 1KB）
+        long usedKB = usedBytes == 0 ? 0 : Math.max(1, (usedBytes + 1023) / 1024);
+
+        // totalSize 暂无套餐维度信息，前端可结合 merchant-quota 接口获取
+        result.put("totalSize", 0);
+        result.put("usedSize", usedKB);
+        result.put("fileCount", fileCount);
+        result.put("merchantId", merchantId);
+        return result;
     }
 
     /**
@@ -389,21 +531,17 @@ public class CorpusService {
      */
     public PageResponse<Corpus> search(String keyword, int pageNum, int pageSize) {
         if (keyword == null || keyword.trim().isEmpty()) {
-            throw new BusinessException(400, "关键词不能为空");
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "关键词不能为空");
         }
 
         try {
-            // ✅ TODO 14 COMPLETED: Implement full-text search with case-insensitive matching and relevance ranking
+            // 优化：先用 SQL LIKE 过滤候选集，避免全表加载到内存（selectAll）
             String normalizedKeyword = keyword.toLowerCase().trim();
-            List<Corpus> allData = corpusMapper.selectAll();
+            List<Corpus> allData = corpusMapper.selectByKeyword(normalizedKeyword);
 
-            // 搜索和相关性计分
+            // 对候选集做相关性计分（候选集已通过 SQL 过滤，规模远小于全表）
             List<SearchResult> searchResults = new ArrayList<>();
             for (Corpus c : allData) {
-                if (c.getStatus() != 1) {
-                    continue;  // 跳过已删除的内容
-                }
-
                 int relevanceScore = calculateRelevance(c, normalizedKeyword);
                 if (relevanceScore > 0) {
                     searchResults.add(new SearchResult(c, relevanceScore));
@@ -438,7 +576,7 @@ public class CorpusService {
                 .build();
         } catch (Exception e) {
             log.error("❌ 全文搜索失败: keyword={}, {}", keyword, e.getMessage(), e);
-            throw new BusinessException(500, "搜索失败，请稍后重试");
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "搜索失败，请稍后重试");
         }
     }
 

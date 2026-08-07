@@ -215,9 +215,9 @@
             <a-form-item
               v-for="param in formData.requiredParams"
               :key="param.key"
-              :label="param.label"
+              :label="param.label || param.key"
               :name="['params', param.key]"
-              :rules="[{ required: true, message: `${param.label}不能为空`, trigger: 'blur' }]"
+              :rules="[{ required: true, message: `${param.label || param.key}不能为空`, trigger: 'blur' }]"
             >
               <a-input v-model:value="formData.params[param.key]" :placeholder="param.placeholder" />
             </a-form-item>
@@ -228,7 +228,7 @@
             <a-form-item
               v-for="param in formData.optionalParams"
               :key="param.key"
-              :label="param.label"
+              :label="param.label || param.key"
               :name="['params', param.key]"
             >
               <a-input v-model:value="formData.params[param.key]" :placeholder="param.placeholder" />
@@ -488,7 +488,17 @@ const loadData = async () => {
   loading.value = true
   try {
     const res = await getMerchantPromotionConfigs(currentMerchantId.value)
-    allDataSource.value = Array.isArray(res) ? res : []
+    allDataSource.value = (Array.isArray(res) ? res : []).map(item => {
+      // 后端 params 为 JSON 字符串，解析为对象便于展示和编辑
+      if (typeof item.params === 'string') {
+        try {
+          item.params = JSON.parse(item.params) || {}
+        } catch (e) {
+          item.params = {}
+        }
+      }
+      return item
+    })
   } catch (e) {
     console.error('加载商家推广配置失败', e)
     allDataSource.value = []
@@ -514,7 +524,16 @@ const loadAvailableCoupons = async () => {
   }
   try {
     const res = await getAvailableCoupons(currentMerchantId.value)
-    availableCoupons.value = Array.isArray(res) ? res : []
+    // 后端返回分页结构 {list, total}
+    const list = Array.isArray(res) ? res : (res.list || [])
+    availableCoupons.value = list.map(c => ({
+      ...c,
+      name: c.name || c.title,
+      value: c.value != null ? c.value : c.amount,
+      threshold: c.threshold != null ? c.threshold : (c.minAmount || 0),
+      validStart: c.validStart || c.startTime,
+      validEnd: c.validEnd || c.endTime
+    }))
   } catch (e) {
     console.error('加载可用优惠券失败', e)
     availableCoupons.value = []
@@ -577,15 +596,62 @@ const handleEdit = (record) => {
     if (availablePlatforms.value.length === 0) {
       loadAvailablePlatforms()
     }
+
+    // 解析 params（后端可能返回JSON字符串）
+    let paramsObj = {}
+    if (record.params) {
+      if (typeof record.params === 'string') {
+        try {
+          paramsObj = JSON.parse(record.params)
+        } catch (e) {
+          paramsObj = {}
+        }
+      } else {
+        paramsObj = record.params
+      }
+    }
+
+    // 解析 requiredParams 和 optionalParams（如果是字符串）
+    let requiredParamsArray = []
+    let optionalParamsArray = []
+    if (record.requiredParams) {
+      if (typeof record.requiredParams === 'string') {
+        try {
+          requiredParamsArray = JSON.parse(record.requiredParams)
+        } catch (e) {
+          requiredParamsArray = []
+        }
+      } else {
+        requiredParamsArray = record.requiredParams
+      }
+    }
+    if (record.optionalParams) {
+      if (typeof record.optionalParams === 'string') {
+        try {
+          optionalParamsArray = JSON.parse(record.optionalParams)
+        } catch (e) {
+          optionalParamsArray = []
+        }
+      } else {
+        optionalParamsArray = record.optionalParams
+      }
+    }
+
     Object.assign(formData, {
       platformId: record.platformId,
       customName: record.customName || '',
       customIcon: record.customIcon || '',
-      params: JSON.parse(JSON.stringify(record.params || {})),
-      requiredParams: JSON.parse(JSON.stringify(record.requiredParams || [])),
-      optionalParams: JSON.parse(JSON.stringify(record.optionalParams || [])),
+      params: JSON.parse(JSON.stringify(paramsObj)),
+      requiredParams: JSON.parse(JSON.stringify(requiredParamsArray)),
+      optionalParams: JSON.parse(JSON.stringify(optionalParamsArray)),
       sort: record.sort,
       status: record.status
+    })
+    // 确保 params 对象为每个必填和可选参数都有 key
+    ;[...formData.requiredParams, ...formData.optionalParams].forEach(param => {
+      if (param.key && formData.params[param.key] === undefined) {
+        formData.params[param.key] = ''
+      }
     })
   } else {
     modalTitle.value = '编辑优惠券展示配置'
@@ -612,12 +678,32 @@ const handleTabChange = (key) => {
   }
 }
 
+const parseParamList = (val) => {
+  if (!val) return []
+  if (Array.isArray(val)) return val
+  if (typeof val === 'string') {
+    try {
+      const parsed = JSON.parse(val)
+      return Array.isArray(parsed) ? parsed : []
+    } catch (e) {
+      return []
+    }
+  }
+  return []
+}
+
 const handlePlatformChange = (platformId) => {
   const platform = availablePlatforms.value.find(p => p.id === platformId)
   if (platform) {
-    formData.requiredParams = JSON.parse(JSON.stringify(platform.requiredParams || []))
-    formData.optionalParams = JSON.parse(JSON.stringify(platform.optionalParams || []))
-    formData.params = formData.params || {}
+    formData.requiredParams = parseParamList(platform.requiredParams)
+    formData.optionalParams = parseParamList(platform.optionalParams)
+    // 初始化 params 对象，为每个参数预设空值
+    formData.params = {}
+    ;[...formData.requiredParams, ...formData.optionalParams].forEach(param => {
+      if (param.key) {
+        formData.params[param.key] = ''
+      }
+    })
   }
 }
 
@@ -628,7 +714,8 @@ const handleSubmit = async () => {
     const payload = {
       merchantId: currentMerchantId.value,
       type: formData.type,
-      params: formData.params,
+      // 后端 params 字段为字符串类型，需序列化
+      params: formData.type === 'platform' ? JSON.stringify(formData.params) : undefined,
       customName: formData.customName,
       customIcon: formData.customIcon,
       sort: formData.sort,
@@ -641,7 +728,7 @@ const handleSubmit = async () => {
       payload.platformId = formData.platformId
     }
     if (isEdit.value) {
-      await upsertMerchantPromotionConfig(payload)
+      await updateMerchantPromotionConfig(editId.value, payload)
       message.success('更新成功')
     } else {
       await upsertMerchantPromotionConfig(payload)

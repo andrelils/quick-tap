@@ -1,5 +1,6 @@
 package com.quicktap.service;
 
+import com.quicktap.common.ErrorCode;
 import com.quicktap.constant.Constants;
 import com.quicktap.dto.AdminCreateRequest;
 import com.quicktap.dto.AdminUpdateRequest;
@@ -13,7 +14,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 管理员管理服务 - 系统管理员生命周期管理
@@ -190,18 +193,58 @@ public class AdminService {
     }
 
     /**
+     * 按关键词/角色/状态分页查询管理员
+     * @param pageNum 页码
+     * @param pageSize 每页大小
+     * @param keyword 关键词（账号/昵称/电话）
+     * @param role 角色过滤
+     * @param status 状态过滤
+     * @return 分页结果
+     */
+    public com.quicktap.dto.PageResponse<Admin> listAdminsByKeyword(Integer pageNum, Integer pageSize, String keyword, String role, Integer status) {
+        if (pageNum == null || pageNum <= 0) {
+            pageNum = Constants.DEFAULT_PAGE_NUM;
+        }
+        if (pageSize == null || pageSize <= 0 || pageSize > Constants.MAX_PAGE_SIZE) {
+            pageSize = Constants.DEFAULT_PAGE_SIZE;
+        }
+
+        Map<String, Object> params = new HashMap<>();
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            params.put("keyword", "%" + keyword.trim() + "%");
+        }
+        if (role != null && !role.trim().isEmpty()) {
+            params.put("role", role.trim());
+        }
+        if (status != null) {
+            params.put("status", status);
+        }
+
+        int offset = (pageNum - 1) * pageSize;
+        long total = adminMapper.countByKeyword(params);
+        List<Admin> admins = adminMapper.selectByKeyword(params, offset, pageSize);
+
+        // 移除密码信息
+        if (admins != null) {
+            admins.forEach(admin -> admin.setPassword(null));
+        }
+
+        return com.quicktap.dto.PageResponse.of(admins, pageNum, pageSize, total);
+    }
+
+    /**
      * 获取管理员详情
      * @param id 管理员 ID
      * @return 管理员详情
      */
     public Admin getAdminById(Integer id) {
         if (id == null || id <= 0) {
-            throw new BusinessException(400, "管理员 ID 不能为空或小于 1");
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "管理员 ID 不能为空或小于 1");
         }
 
         Admin admin = adminMapper.selectById(id);
         if (admin == null) {
-            throw new BusinessException(404, "管理员不存在");
+            throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "管理员不存在");
         }
 
         // 不返回密码
@@ -217,25 +260,25 @@ public class AdminService {
     public Admin createAdmin(AdminCreateRequest request) {
         // 验证参数
         if (request == null) {
-            throw new BusinessException(400, "请求参数不能为空");
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "请求参数不能为空");
         }
         if (request.getUsername() == null || request.getUsername().trim().isEmpty()) {
-            throw new BusinessException(400, "用户名不能为空");
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "用户名不能为空");
         }
         if (request.getPassword() == null || request.getPassword().trim().isEmpty()) {
-            throw new BusinessException(400, "密码不能为空");
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "密码不能为空");
         }
         if (request.getPassword().length() < 6) {
-            throw new BusinessException(400, "密码长度至少 6 个字符");
+            throw new BusinessException(ErrorCode.PASSWORD_TOO_SHORT, "密码长度至少 6 个字符");
         }
         if (request.getRole() == null || request.getRole().trim().isEmpty()) {
-            throw new BusinessException(400, "角色不能为空");
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "角色不能为空");
         }
 
         // 检查用户名是否已存在
         Admin existingAdmin = adminMapper.selectByUsername(request.getUsername());
         if (existingAdmin != null) {
-            throw new BusinessException(400, "用户名已存在");
+            throw new BusinessException(ErrorCode.USERNAME_EXISTS, "用户名已存在");
         }
 
         // 验证角色
@@ -243,13 +286,16 @@ public class AdminService {
         if (!role.equals(Constants.ROLE_SUPER_ADMIN) &&
             !role.equals(Constants.ROLE_ADMIN) &&
             !role.equals(Constants.ROLE_MERCHANT)) {
-            throw new BusinessException(400, "角色不合法");
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "角色不合法");
         }
 
         // 创建管理员
         Admin admin = new Admin();
         admin.setUsername(request.getUsername());
         admin.setPassword(PasswordUtil.encode(request.getPassword()));
+        admin.setNickname(request.getNickname());
+        admin.setPhone(request.getPhone());
+        admin.setEmail(request.getEmail());
         admin.setRole(role);
         admin.setMerchantId(request.getMerchantId());
         admin.setStatus(request.getStatus() != null ? request.getStatus() : Constants.ADMIN_STATUS_ENABLED);
@@ -258,7 +304,7 @@ public class AdminService {
 
         int result = adminMapper.insert(admin);
         if (result <= 0) {
-            throw new BusinessException(500, "创建管理员失败");
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "创建管理员失败");
         }
 
         log.info("创建管理员成功: id={}, username={}", admin.getId(), admin.getUsername());
@@ -276,15 +322,15 @@ public class AdminService {
      */
     public Admin updateAdmin(Integer id, AdminUpdateRequest request) {
         if (id == null || id <= 0) {
-            throw new BusinessException(400, "管理员 ID 不能为空");
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "管理员 ID 不能为空");
         }
         if (request == null) {
-            throw new BusinessException(400, "请求参数不能为空");
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "请求参数不能为空");
         }
 
         Admin admin = adminMapper.selectById(id);
         if (admin == null) {
-            throw new BusinessException(404, "管理员不存在");
+            throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "管理员不存在");
         }
 
         // 更新角色
@@ -293,7 +339,7 @@ public class AdminService {
             if (!role.equals(Constants.ROLE_SUPER_ADMIN) &&
                 !role.equals(Constants.ROLE_ADMIN) &&
                 !role.equals(Constants.ROLE_MERCHANT)) {
-                throw new BusinessException(400, "角色不合法");
+                throw new BusinessException(ErrorCode.INVALID_REQUEST, "角色不合法");
             }
             admin.setRole(role);
         }
@@ -301,7 +347,7 @@ public class AdminService {
         // 更新密码
         if (request.getPassword() != null && !request.getPassword().isEmpty()) {
             if (request.getPassword().length() < 6) {
-                throw new BusinessException(400, "密码长度至少 6 个字符");
+                throw new BusinessException(ErrorCode.PASSWORD_TOO_SHORT, "密码长度至少 6 个字符");
             }
             admin.setPassword(PasswordUtil.encode(request.getPassword()));
         }
@@ -316,11 +362,31 @@ public class AdminService {
             admin.setStatus(request.getStatus());
         }
 
+        // 更新头像
+        if (request.getAvatar() != null) {
+            admin.setAvatar(request.getAvatar());
+        }
+
+        // 更新昵称
+        if (request.getNickname() != null && !request.getNickname().isEmpty()) {
+            admin.setNickname(request.getNickname());
+        }
+
+        // 更新邮箱
+        if (request.getEmail() != null) {
+            admin.setEmail(request.getEmail());
+        }
+
+        // 更新电话
+        if (request.getPhone() != null) {
+            admin.setPhone(request.getPhone());
+        }
+
         admin.setUpdatedAt(LocalDateTime.now());
 
         int result = adminMapper.update(admin);
         if (result <= 0) {
-            throw new BusinessException(500, "更新管理员失败");
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "更新管理员失败");
         }
 
         log.info("更新管理员成功: id={}", id);
@@ -336,17 +402,17 @@ public class AdminService {
      */
     public void deleteAdmin(Integer id) {
         if (id == null || id <= 0) {
-            throw new BusinessException(400, "管理员 ID 不能为空");
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "管理员 ID 不能为空");
         }
 
         Admin admin = adminMapper.selectById(id);
         if (admin == null) {
-            throw new BusinessException(404, "管理员不存在");
+            throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "管理员不存在");
         }
 
         // 不能删除超级管理员
         if (Constants.ROLE_SUPER_ADMIN.equals(admin.getRole())) {
-            throw new BusinessException(403, "不能删除超级管理员");
+            throw new BusinessException(ErrorCode.FORBIDDEN, "不能删除超级管理员");
         }
 
         // 如果该用户是商家角色且有绑定的商家，则级联删除商家
@@ -357,7 +423,7 @@ public class AdminService {
 
         int result = adminMapper.deleteById(id);
         if (result <= 0) {
-            throw new BusinessException(500, "删除管理员失败");
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "删除管理员失败");
         }
 
         log.info("删除管理员成功: id={}", id);
@@ -366,15 +432,16 @@ public class AdminService {
     /**
      * 禁用管理员
      * @param id 管理员 ID
+     * @return 更新后的管理员
      */
-    public void disableAdmin(Integer id) {
+    public Admin disableAdmin(Integer id) {
         if (id == null || id <= 0) {
-            throw new BusinessException(400, "管理员 ID 不能为空");
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "管理员 ID 不能为空");
         }
 
         Admin admin = adminMapper.selectById(id);
         if (admin == null) {
-            throw new BusinessException(404, "管理员不存在");
+            throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "管理员不存在");
         }
 
         admin.setStatus(Constants.ADMIN_STATUS_DISABLED);
@@ -382,24 +449,28 @@ public class AdminService {
 
         int result = adminMapper.update(admin);
         if (result <= 0) {
-            throw new BusinessException(500, "禁用管理员失败");
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "禁用管理员失败");
         }
 
         log.info("禁用管理员成功: id={}", id);
+
+        admin.setPassword(null);
+        return admin;
     }
 
     /**
      * 启用管理员
      * @param id 管理员 ID
+     * @return 更新后的管理员
      */
-    public void enableAdmin(Integer id) {
+    public Admin enableAdmin(Integer id) {
         if (id == null || id <= 0) {
-            throw new BusinessException(400, "管理员 ID 不能为空");
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "管理员 ID 不能为空");
         }
 
         Admin admin = adminMapper.selectById(id);
         if (admin == null) {
-            throw new BusinessException(404, "管理员不存在");
+            throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "管理员不存在");
         }
 
         admin.setStatus(Constants.ADMIN_STATUS_ENABLED);
@@ -407,10 +478,13 @@ public class AdminService {
 
         int result = adminMapper.update(admin);
         if (result <= 0) {
-            throw new BusinessException(500, "启用管理员失败");
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "启用管理员失败");
         }
 
         log.info("启用管理员成功: id={}", id);
+
+        admin.setPassword(null);
+        return admin;
     }
 
     /**
@@ -420,15 +494,15 @@ public class AdminService {
      */
     public void resetPassword(Integer id, String newPassword) {
         if (id == null || id <= 0) {
-            throw new BusinessException(400, "管理员 ID 不能为空");
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "管理员 ID 不能为空");
         }
         if (newPassword == null || newPassword.length() < 6) {
-            throw new BusinessException(400, "密码长度至少 6 个字符");
+            throw new BusinessException(ErrorCode.PASSWORD_TOO_SHORT, "密码长度至少 6 个字符");
         }
 
         Admin admin = adminMapper.selectById(id);
         if (admin == null) {
-            throw new BusinessException(404, "管理员不存在");
+            throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "管理员不存在");
         }
 
         admin.setPassword(PasswordUtil.encode(newPassword));
@@ -436,7 +510,7 @@ public class AdminService {
 
         int result = adminMapper.update(admin);
         if (result <= 0) {
-            throw new BusinessException(500, "重置密码失败");
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "重置密码失败");
         }
 
         log.info("重置管理员密码成功: id={}", id);
@@ -447,26 +521,26 @@ public class AdminService {
      */
     public void updatePasswordBySelf(Integer id, String oldPassword, String newPassword) {
         if (id == null || id <= 0) {
-            throw new BusinessException(400, "管理员 ID 不能为空");
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "管理员 ID 不能为空");
         }
         if (newPassword == null || newPassword.length() < 6) {
-            throw new BusinessException(400, "新密码长度至少 6 个字符");
+            throw new BusinessException(ErrorCode.PASSWORD_TOO_SHORT, "新密码长度至少 6 个字符");
         }
         Admin admin = adminMapper.selectById(id);
         if (admin == null) {
-            throw new BusinessException(404, "管理员不存在");
+            throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "管理员不存在");
         }
         // 校验原密码（oldPassword 为空则跳过，兼容页面未提供原密码的场景；但如提供则校验）
         if (oldPassword != null && !oldPassword.isEmpty()) {
             if (!PasswordUtil.matches(oldPassword, admin.getPassword())) {
-                throw new BusinessException(400, "原密码不正确");
+                throw new BusinessException(ErrorCode.PASSWORD_INCORRECT, "原密码不正确");
             }
         }
         admin.setPassword(PasswordUtil.encode(newPassword));
         admin.setUpdatedAt(LocalDateTime.now());
         int result = adminMapper.update(admin);
         if (result <= 0) {
-            throw new BusinessException(500, "修改密码失败");
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "修改密码失败");
         }
         log.info("管理员自助修改密码成功: id={}", id);
     }
@@ -474,22 +548,22 @@ public class AdminService {
     /**
      * 当前登录管理员修改自己的基础资料
      */
-    public Admin updateInfoBySelf(Integer id, String nickname, String avatar, String email, String phone) {
+    public Admin updateInfoBySelf(Integer id, String nickname, String email, String phone, String avatar, String remark) {
         if (id == null || id <= 0) {
-            throw new BusinessException(400, "管理员 ID 不能为空");
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "管理员 ID 不能为空");
         }
         Admin admin = adminMapper.selectById(id);
         if (admin == null) {
-            throw new BusinessException(404, "管理员不存在");
+            throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "管理员不存在");
         }
         if (nickname != null) admin.setNickname(nickname);
-        if (avatar != null) admin.setAvatar(avatar);
         if (email != null) admin.setEmail(email);
         if (phone != null) admin.setPhone(phone);
+        if (avatar != null) admin.setAvatar(avatar);
         admin.setUpdatedAt(LocalDateTime.now());
         int result = adminMapper.update(admin);
         if (result <= 0) {
-            throw new BusinessException(500, "修改资料失败");
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "修改资料失败");
         }
         log.info("管理员自助修改资料成功: id={}", id);
         return admin;

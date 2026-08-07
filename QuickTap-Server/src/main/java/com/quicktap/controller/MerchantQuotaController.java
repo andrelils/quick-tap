@@ -246,7 +246,7 @@ import java.util.Map;
 @Slf4j
 @RestController
 @RequestMapping("/api")
-@CrossOrigin(origins = "*", maxAge = 3600)
+
 @RequiredArgsConstructor
 public class MerchantQuotaController {
 

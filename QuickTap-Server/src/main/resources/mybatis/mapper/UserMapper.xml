@@ -45,6 +45,23 @@
         SELECT * FROM user ORDER BY created_at DESC LIMIT #{offset}, #{pageSize}
     </select>
 
+    <select id="selectByKeyword" resultMap="UserResultMap">
+        SELECT * FROM user
+        WHERE 1=1
+        <if test="params.keyword != null">
+            AND (username LIKE #{params.keyword} OR phone LIKE #{params.keyword} OR nickname LIKE #{params.keyword})
+        </if>
+        ORDER BY created_at DESC LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <select id="countByKeyword" resultType="long">
+        SELECT COUNT(*) FROM user
+        WHERE 1=1
+        <if test="params.keyword != null">
+            AND (username LIKE #{params.keyword} OR phone LIKE #{params.keyword} OR nickname LIKE #{params.keyword})
+        </if>
+    </select>
+
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO user (username, password, openid, unionid, nickname, avatar, phone, status, created_at, updated_at)
         VALUES (#{username}, #{password}, #{openid}, #{unionid}, #{nickname}, #{avatar}, #{phone}, #{status}, NOW(), NOW())
@@ -65,6 +82,10 @@
     </update>
 
     <delete id="deleteById">
+        DELETE FROM user WHERE id = #{id}
+    </delete>
+
+    <delete id="delete">
         DELETE FROM user WHERE id = #{id}
     </delete>
 

@@ -30,7 +30,7 @@ import java.util.*;
 @Slf4j
 @RestController
 @RequestMapping("/api/miniapp")
-@CrossOrigin(origins = "*")
+
 public class MiniappController {
 
     @Autowired
@@ -264,10 +264,11 @@ public class MiniappController {
         // 5) bcrypt 密码
         String encodedPassword = passwordEncoder.encode(password);
 
-        // 6) INSERT admin (role='merchant', merchant_id=新 id)
+        // 6) INSERT admin (role='merchant', merchant_id=新 id, status=0 待审核)
+        //    商家审核通过后由 MerchantService.approveMerchant 同步启用 admin 账号
         jdbcTemplate.update(
                 "INSERT INTO admin (username, user_code, password, nickname, role, merchant_id, status, created_at, updated_at) " +
-                        "VALUES (?, ?, ?, ?, 'merchant', ?, 1, NOW(), NOW())",
+                        "VALUES (?, ?, ?, ?, 'merchant', ?, 0, NOW(), NOW())",
                 username, userCode, encodedPassword, nickname != null ? nickname : merchantName, newMerchantId);
 
         // 7) 绑定 device/qrcode 的 merchant_id

@@ -1,5 +1,6 @@
 package com.quicktap.service;
 
+import com.quicktap.common.ErrorCode;
 import com.quicktap.dto.LoginRequest;
 import com.quicktap.dto.LoginResponse;
 import com.quicktap.dto.RegisterRequest;
@@ -21,6 +22,8 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * 认证服务
@@ -43,6 +46,19 @@ public class AuthService {
     @Autowired
     private ApplicationEventPublisher eventPublisher;
 
+    // 用于防止并发token刷新的锁映射表
+    // key: userId, value: 该用户的读写锁
+    // 目的：每个用户有自己的锁，避免全局锁导致的性能问题
+    private final ConcurrentHashMap<Integer, ReentrantReadWriteLock> userRefreshLocks = new ConcurrentHashMap<>();
+
+    /**
+     * 获取用户的token刷新锁
+     * 用于解决并发刷新同一用户token导致的race condition
+     */
+    private ReentrantReadWriteLock getUserRefreshLock(Integer userId) {
+        return userRefreshLocks.computeIfAbsent(userId, k -> new ReentrantReadWriteLock());
+    }
+
     /**
      * 管理员登录
      * @param loginRequest 登录请求（用户名、密码）
@@ -55,26 +71,26 @@ public class AuthService {
         // 验证用户名和密码不为空
         if (username == null || username.trim().isEmpty() ||
             password == null || password.trim().isEmpty()) {
-            throw new BusinessException(400, "用户名或密码不能为空");
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "用户名或密码不能为空");
         }
 
         // 从数据库加载管理员
         Admin admin = adminMapper.selectByUsername(username);
         if (admin == null) {
             log.warn("登录失败：管理员不存在, username={}", username);
-            throw new BusinessException(403, "用户名或密码错误");
+            throw new BusinessException(ErrorCode.INVALID_CREDENTIALS, "用户名或密码错误");
         }
 
         // 验证密码
         if (!PasswordUtil.matches(password, admin.getPassword())) {
             log.warn("登录失败：密码错误, username={}", username);
-            throw new BusinessException(403, "用户名或密码错误");
+            throw new BusinessException(ErrorCode.INVALID_CREDENTIALS, "用户名或密码错误");
         }
 
         // 检查账号是否启用
         if (admin.getStatus() == null || admin.getStatus() == 0) {
             log.warn("登录失败：账号已禁用, username={}", username);
-            throw new BusinessException(403, "该账号已被禁用");
+            throw new BusinessException(ErrorCode.ACCOUNT_DISABLED, "该账号已被禁用");
         }
 
         // 生成 JWT token
@@ -103,26 +119,26 @@ public class AuthService {
 
         if (username == null || username.trim().isEmpty() ||
             password == null || password.trim().isEmpty()) {
-            throw new BusinessException(400, "用户名或密码不能为空");
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "用户名或密码不能为空");
         }
 
         // 从数据库加载用户
         User user = userMapper.selectByUsername(username);
         if (user == null) {
             log.warn("用户登录失败：用户不存在, username={}", username);
-            throw new BusinessException(403, "用户名或密码错误");
+            throw new BusinessException(ErrorCode.INVALID_CREDENTIALS, "用户名或密码错误");
         }
 
         // 验证密码
         if (!PasswordUtil.matches(password, user.getPassword())) {
             log.warn("用户登录失败：密码错误, username={}", username);
-            throw new BusinessException(403, "用户名或密码错误");
+            throw new BusinessException(ErrorCode.INVALID_CREDENTIALS, "用户名或密码错误");
         }
 
         // 检查账号是否启用
         if (user.getStatus() == null || user.getStatus() == 0) {
             log.warn("用户登录失败：账号已禁用, username={}", username);
-            throw new BusinessException(403, "该账号已被禁用");
+            throw new BusinessException(ErrorCode.ACCOUNT_DISABLED, "该账号已被禁用");
         }
 
         // 生成 JWT token
@@ -151,20 +167,20 @@ public class AuthService {
 
         // 验证参数
         if (username == null || username.trim().isEmpty()) {
-            throw new BusinessException(400, "用户名不能为空");
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "用户名不能为空");
         }
         if (password == null || password.trim().isEmpty()) {
-            throw new BusinessException(400, "密码不能为空");
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "密码不能为空");
         }
         if (password.length() < 6) {
-            throw new BusinessException(400, "密码长度至少 6 个字符");
+            throw new BusinessException(ErrorCode.PASSWORD_TOO_SHORT, "密码长度至少 6 个字符");
         }
 
         // 检查用户名是否已存在
         User existingUser = userMapper.selectByUsername(username);
         if (existingUser != null) {
             log.warn("注册失败：用户名已存在, username={}", username);
-            throw new BusinessException(400, "用户名已存在");
+            throw new BusinessException(ErrorCode.USERNAME_EXISTS, "用户名已存在");
         }
 
         // 创建新用户
@@ -180,7 +196,7 @@ public class AuthService {
         int result = userMapper.insert(user);
         if (result <= 0) {
             log.error("用户注册失败: username={}", username);
-            throw new BusinessException(500, "注册失败，请稍后重试");
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "注册失败，请稍后重试");
         }
 
         log.info("用户注册成功: username={}, id={}", username, user.getId());
@@ -199,6 +215,10 @@ public class AuthService {
 
     /**
      * 刷新 JWT token
+     * 解决并发刷新race condition：
+     * - 多个并发请求可能同时刷新同一个用户的token
+     * - 使用per-user ReadWriteLock确保token刷新的原子性
+     * - 只允许一个写操作（刷新），多个读操作可并行
      * @param oldToken 旧的 token
      * @return 新的 token
      */
@@ -212,31 +232,41 @@ public class AuthService {
             event.setRefreshFailed(true);
             eventPublisher.publishEvent(event);
 
-            throw new BusinessException(401, "Token 无效");
+            throw new BusinessException(ErrorCode.TOKEN_INVALID, "Token 无效");
         }
 
         String username = jwtTokenProvider.getUsernameFromToken(oldToken);
         Integer userId = jwtTokenProvider.getUserIdFromToken(oldToken);
         String role = jwtTokenProvider.getRoleFromToken(oldToken);
 
-        // 生成新 token
-        String newToken = jwtTokenProvider.generateToken(username, userId, role);
+        // 获取该用户的刷新锁，防止并发刷新同一token
+        ReentrantReadWriteLock lock = getUserRefreshLock(userId);
+        lock.writeLock().lock();
+        try {
+            log.debug("Token刷新：获得写锁成功，userId={}, traceId={}", userId, traceId);
 
-        // 发布Token刷新事件
-        TokenRefreshEvent event = new TokenRefreshEvent(this, traceId, userId, oldToken);
-        event.setNewToken(newToken);
-        event.setRefreshFailed(false);
-        eventPublisher.publishEvent(event);
+            // 生成新 token
+            String newToken = jwtTokenProvider.generateToken(username, userId, role);
 
-        log.info("Token 刷新成功: traceId={}, username={}, userId={}", traceId, username, userId);
+            // 发布Token刷新事件
+            TokenRefreshEvent event = new TokenRefreshEvent(this, traceId, userId, oldToken);
+            event.setNewToken(newToken);
+            event.setRefreshFailed(false);
+            eventPublisher.publishEvent(event);
 
-        return LoginResponse.builder()
-            .token(newToken)
-            .expiresIn(604800000L)
-            .userId(userId)
-            .username(username)
-            .role(role)
-            .build();
+            log.info("Token 刷新成功: traceId={}, username={}, userId={}", traceId, username, userId);
+
+            return LoginResponse.builder()
+                .token(newToken)
+                .expiresIn(604800000L)
+                .userId(userId)
+                .username(username)
+                .role(role)
+                .build();
+        } finally {
+            lock.writeLock().unlock();
+            log.debug("Token刷新：释放写锁，userId={}, traceId={}", userId, traceId);
+        }
     }
 
     /**
@@ -270,7 +300,7 @@ public class AuthService {
      */
     public UserPrincipal getCurrentUser(UserPrincipal userPrincipal) {
         if (userPrincipal == null) {
-            throw new BusinessException(401, "用户未认证");
+            throw new BusinessException(ErrorCode.UNAUTHORIZED, "用户未认证");
         }
         return userPrincipal;
     }
@@ -299,7 +329,7 @@ public class AuthService {
     public LoginResponse wechatMiniLogin(String code) {
         // 验证授权码
         if (code == null || code.trim().isEmpty()) {
-            throw new BusinessException(400, "授权码不能为空");
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "授权码不能为空");
         }
 
         // 从微信服务器交换 session_key 和 openid
@@ -352,7 +382,7 @@ public class AuthService {
         int result = userMapper.insert(newUser);
         if (result <= 0) {
             log.error("微信用户创建失败: openid={}", openid);
-            throw new BusinessException(500, "登录失败，请稍后重试");
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "登录失败，请稍后重试");
         }
 
         log.info("微信用户创建成功: username={}, id={}, openid={}", username, newUser.getId(), openid);

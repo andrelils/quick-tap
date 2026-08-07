@@ -1,5 +1,6 @@
 package com.quicktap.service;
 
+import com.quicktap.common.ErrorCode;
 import com.quicktap.dto.PageResponse;
 import com.quicktap.entity.AiGenerateRecord;
 import com.quicktap.exception.BusinessException;
@@ -36,7 +37,7 @@ public class AiGenerateService {
      */
     public AiGenerateRecord generateText(Integer merchantId, String prompt) {
         if (prompt == null || prompt.trim().isEmpty()) {
-            throw new BusinessException(400, "提示词不能为空");
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "提示词不能为空");
         }
 
         // 创建生成记录
@@ -60,7 +61,7 @@ public class AiGenerateService {
             int result = aiGenerateRecordMapper.insert(record);
             if (result <= 0) {
                 log.error("文本生成记录保存失败: prompt={}", prompt);
-                throw new BusinessException(500, "生成失败，请稍后重试");
+                throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "生成失败，请稍后重试");
             }
 
             log.info("✓ 文本生成成功: recordId={}, merchantId={}, tokens={}, cost=${}",
@@ -73,7 +74,7 @@ public class AiGenerateService {
             log.error("❌ 文本生成异常: {}", e.getMessage(), e);
             record.setStatus(0); // 失败状态
             aiGenerateRecordMapper.insert(record);
-            throw new BusinessException(500, "生成失败: " + e.getMessage());
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "生成失败: " + e.getMessage());
         }
     }
 
@@ -87,7 +88,7 @@ public class AiGenerateService {
      */
     public AiGenerateRecord generateImage(Integer merchantId, String prompt) {
         if (prompt == null || prompt.trim().isEmpty()) {
-            throw new BusinessException(400, "提示词不能为空");
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "提示词不能为空");
         }
 
         AiGenerateRecord record = new AiGenerateRecord();
@@ -107,7 +108,7 @@ public class AiGenerateService {
             int result = aiGenerateRecordMapper.insert(record);
             if (result <= 0) {
                 log.error("图片生成记录保存失败: prompt={}", prompt);
-                throw new BusinessException(500, "生成失败，请稍后重试");
+                throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "生成失败，请稍后重试");
             }
 
             log.info("✓ 图片生成成功: recordId={}, merchantId={}, url={}",
@@ -119,7 +120,7 @@ public class AiGenerateService {
             log.error("❌ 图片生成异常: {}", e.getMessage(), e);
             record.setStatus(0); // 失败状态
             aiGenerateRecordMapper.insert(record);
-            throw new BusinessException(500, "生成失败: " + e.getMessage());
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "生成失败: " + e.getMessage());
         }
     }
 
@@ -133,7 +134,7 @@ public class AiGenerateService {
      */
     public AiGenerateRecord generateVideo(Integer merchantId, String prompt) {
         if (prompt == null || prompt.trim().isEmpty()) {
-            throw new BusinessException(400, "提示词不能为空");
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "提示词不能为空");
         }
 
         AiGenerateRecord record = new AiGenerateRecord();
@@ -152,7 +153,7 @@ public class AiGenerateService {
             int result = aiGenerateRecordMapper.insert(record);
             if (result <= 0) {
                 log.error("视频生成记录保存失败: prompt={}", prompt);
-                throw new BusinessException(500, "生成失败，请稍后重试");
+                throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "生成失败，请稍后重试");
             }
 
             log.info("✓ 视频生成成功: recordId={}, merchantId={}, url={}",
@@ -164,7 +165,7 @@ public class AiGenerateService {
             log.error("❌ 视频生成异常: {}", e.getMessage(), e);
             record.setStatus(0); // 失败状态
             aiGenerateRecordMapper.insert(record);
-            throw new BusinessException(500, "生成失败: " + e.getMessage());
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "生成失败: " + e.getMessage());
         }
     }
 
@@ -218,7 +219,7 @@ public class AiGenerateService {
     public AiGenerateRecord getRecord(String recordId) {
         AiGenerateRecord record = aiGenerateRecordMapper.selectByRecordId(recordId);
         if (record == null) {
-            throw new BusinessException(404, "记录不存在");
+            throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "记录不存在");
         }
         return record;
     }
@@ -230,13 +231,13 @@ public class AiGenerateService {
     public void deleteRecord(String recordId) {
         AiGenerateRecord record = aiGenerateRecordMapper.selectByRecordId(recordId);
         if (record == null) {
-            throw new BusinessException(404, "记录不存在");
+            throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "记录不存在");
         }
 
         int result = aiGenerateRecordMapper.deleteById(record.getId());
         if (result <= 0) {
             log.error("删除记录失败: recordId={}", recordId);
-            throw new BusinessException(500, "删除失败，请稍后重试");
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "删除失败，请稍后重试");
         }
 
         log.info("删除记录成功: recordId={}", recordId);

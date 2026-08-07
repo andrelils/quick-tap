@@ -3,11 +3,11 @@ package com.quicktap.controller;
 import com.quicktap.dto.ApiResponse;
 import com.quicktap.service.AdminService;
 import com.quicktap.service.MerchantService;
+import com.quicktap.service.SystemSettingService;
 import com.quicktap.entity.Admin;
 import com.quicktap.entity.Merchant;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,21 +19,17 @@ import java.util.stream.Collectors;
  * <p>
  * 路径前缀：/api/admin/system
  * 管理 system_setting 表中的域名、URL 等全局配置（key-value 结构）。
+ * 数据库访问通过 SystemSettingService 完成，Controller 不再直接持有 JdbcTemplate。
  */
 @Slf4j
 @RestController
 @RequestMapping("/api/admin/system")
-@CrossOrigin(origins = "*")
+@RequiredArgsConstructor
 public class SystemController {
 
-    @Autowired
-    private JdbcTemplate jdbcTemplate;
-
-    @Autowired
-    private AdminService adminService;
-
-    @Autowired
-    private MerchantService merchantService;
+    private final AdminService adminService;
+    private final MerchantService merchantService;
+    private final SystemSettingService systemSettingService;
 
     /**
      * 获取系统设置
@@ -43,15 +39,7 @@ public class SystemController {
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
     public ApiResponse<Map<String, Object>> getSettings() {
         log.info("获取系统设置");
-        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
-                "SELECT key_name, value FROM system_setting");
-        Map<String, Object> settings = new LinkedHashMap<>();
-        for (Map<String, Object> row : rows) {
-            String key = (String) row.get("key_name");
-            Object value = row.get("value");
-            settings.put(key, value);
-        }
-        return ApiResponse.success("获取成功", settings);
+        return ApiResponse.success("获取成功", systemSettingService.getAllSettings());
     }
 
     /**
@@ -74,29 +62,8 @@ public class SystemController {
             settings = body;
         }
 
-        for (Map.Entry<String, Object> entry : settings.entrySet()) {
-            String key = entry.getKey();
-            String value = entry.getValue() != null ? String.valueOf(entry.getValue()) : "";
-            upsertSetting(key, value);
-        }
+        systemSettingService.updateSettings(settings);
         return ApiResponse.success("保存成功", null);
-    }
-
-    /**
-     * upsert 单条系统设置：存在则更新，不存在则插入。
-     */
-    private void upsertSetting(String key, String value) {
-        List<Map<String, Object>> exist = jdbcTemplate.queryForList(
-                "SELECT id FROM system_setting WHERE key_name = ? LIMIT 1", key);
-        if (exist.isEmpty()) {
-            jdbcTemplate.update(
-                    "INSERT INTO system_setting (key_name, value, created_at, updated_at) VALUES (?, ?, NOW(), NOW())",
-                    key, value);
-        } else {
-            jdbcTemplate.update(
-                    "UPDATE system_setting SET value = ?, updated_at = NOW() WHERE key_name = ?",
-                    value, key);
-        }
     }
 
     // ============================================================================
@@ -170,7 +137,6 @@ public class SystemController {
         log.info("更新管理员 {} 的商户访问权限: merchantIds={}", adminId, merchantIds);
 
         // 如果只选了一个，直接写到 admin.merchantId；其它写入 system_setting 做扩展存储
-        Admin admin = adminService.getAdminById(adminId);
         Integer firstMerchant = merchantIds.isEmpty() ? null : merchantIds.get(0);
         try {
             com.quicktap.dto.AdminUpdateRequest upd = new com.quicktap.dto.AdminUpdateRequest();
@@ -183,7 +149,7 @@ public class SystemController {
         String json = merchantIds.stream()
                 .map(String::valueOf)
                 .collect(Collectors.joining(",", "[", "]"));
-        upsertSetting("admin_merchant_access_" + adminId, json);
+        systemSettingService.upsertSetting("admin_merchant_access_" + adminId, json);
         return ApiResponse.success("保存成功", null);
     }
 
@@ -208,28 +174,22 @@ public class SystemController {
             return list;
         }
         // ADMIN 角色：从 system_setting 读多商户配置，fallback 到 admin.merchantId
-        try {
-            List<Map<String, Object>> rows = jdbcTemplate.queryForList(
-                    "SELECT value FROM system_setting WHERE key_name = ? LIMIT 1",
-                    "admin_merchant_access_" + admin.getId());
-            if (!rows.isEmpty()) {
-                String value = String.valueOf(rows.get(0).get("value"));
-                // 解析 "[1,2,3]" 形式
-                String inside = value.replaceAll("[\\[\\]\\s]", "");
-                if (!inside.isEmpty()) {
-                    List<Integer> list = new ArrayList<>();
-                    for (String s : inside.split(",")) {
-                        if (!s.isEmpty()) {
-                            try {
-                                list.add(Integer.parseInt(s));
-                            } catch (Exception ignore) {
-                            }
+        String value = systemSettingService.getValue("admin_merchant_access_" + admin.getId());
+        if (value != null && !value.isEmpty()) {
+            // 解析 "[1,2,3]" 形式
+            String inside = value.replaceAll("[\\[\\]\\s]", "");
+            if (!inside.isEmpty()) {
+                List<Integer> list = new ArrayList<>();
+                for (String s : inside.split(",")) {
+                    if (!s.isEmpty()) {
+                        try {
+                            list.add(Integer.parseInt(s));
+                        } catch (Exception ignore) {
                         }
                     }
-                    if (!list.isEmpty()) return list;
                 }
+                if (!list.isEmpty()) return list;
             }
-        } catch (Exception ignore) {
         }
         List<Integer> fallback = new ArrayList<>();
         if (admin.getMerchantId() != null) fallback.add(admin.getMerchantId());

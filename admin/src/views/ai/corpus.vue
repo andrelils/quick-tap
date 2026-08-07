@@ -161,7 +161,7 @@
             />
           </template>
           <template v-else-if="column.key === 'createTime'">
-            <span class="create-time">{{ record.createTime || '-' }}</span>
+            <span class="create-time">{{ formatTime(record.createdAt || record.createTime) }}</span>
           </template>
           <template v-else-if="column.key === 'action'">
             <a-space size="small">
@@ -393,6 +393,7 @@ import { getMerchantList } from '@/api/merchant'
 import { useAppStore } from '@/store/app'
 import { useUserStore } from '@/store/user'
 import { formatFileSize } from '@/utils/format'
+import { isSuccessCode } from '@/utils/request'
 
 const appStore = useAppStore()
 const userStore = useUserStore()
@@ -549,7 +550,7 @@ const columns = [
   { title: '内容', dataIndex: 'content', key: 'content', ellipsis: true },
   { title: '文件大小', dataIndex: 'fileSize', key: 'fileSize', width: 120 },
   { title: '标签', dataIndex: 'tags', key: 'tags', width: 180 },
-  { title: '使用次数', dataIndex: 'useCount', key: 'useCount', width: 110 },
+  { title: '使用次数', dataIndex: 'viewCount', key: 'useCount', width: 110 },
   { title: '状态', dataIndex: 'status', key: 'status', width: 100 },
   { title: '创建时间', dataIndex: 'createTime', key: 'createTime', width: 180 },
   { title: '操作', dataIndex: 'action', key: 'action', width: 140, fixed: 'right' }
@@ -656,13 +657,15 @@ const beforeVideoUpload = (file) => {
 const handleImageUploadChange = (info) => {
   if (info.file.status === 'done') {
     const res = info.file.response
-    if (res && res.code === 0 && res.data) {
+    if (isSuccessCode(res)) {
       formData.fileUrl = res.data.url
       formData.fileSize = res.data.size || info.file.size || 0
       if (info.fileList && info.fileList.length > 0) {
         const lastFile = info.fileList[info.fileList.length - 1]
-        lastFile.url = res.data.url
-        lastFile.thumbUrl = res.data.url
+        if (lastFile) {
+          lastFile.url = res.data.url
+          lastFile.thumbUrl = res.data.url
+        }
       }
       message.success('上传成功')
     } else {
@@ -683,7 +686,7 @@ const handleImageUploadRemove = () => {
 const handleVideoUploadChange = (info) => {
   if (info.file.status === 'done') {
     const res = info.file.response
-    if (res && res.code === 0 && res.data) {
+    if (isSuccessCode(res)) {
       formData.fileUrl = res.data.url
       formData.fileSize = res.data.size || info.file.size || 0
       message.success('上传成功')
@@ -705,6 +708,14 @@ const handleVideoUploadRemove = () => {
 const getTypeName = (type) => {
   const map = { text: '文字', image: '图片', video: '视频' }
   return map[type] || type
+}
+
+const formatTime = (value) => {
+  if (!value) return '-'
+  const d = new Date(value)
+  if (isNaN(d.getTime())) return value
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
 const getTypeColor = (type) => {

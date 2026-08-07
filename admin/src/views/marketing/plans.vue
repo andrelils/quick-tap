@@ -114,8 +114,13 @@
             <div class="plan-price">
               <span class="price-symbol">¥</span>
               <span class="price-num">{{ record.price }}</span>
-              <span class="price-unit">/{{ record.duration }}天</span>
             </div>
+          </template>
+          <template v-else-if="column.key === 'duration'">
+            {{ (record.durationMonths ?? record.duration_months ?? 0) > 0 ? `${record.durationMonths ?? record.duration_months} 个月` : '-' }}
+          </template>
+          <template v-else-if="column.key === 'deviceCount'">
+            {{ record.deviceCount ?? record.device_count ?? 0 }} 台
           </template>
           <template v-else-if="column.key === 'status'">
             <a-badge 
@@ -123,8 +128,8 @@
               :text="record.status === 1 ? '上架中' : '已下架'" 
             />
           </template>
-          <template v-else-if="column.key === 'storage_limit'">
-            {{ record.storage_limit === 0 ? '不限' : `${record.storage_limit}MB` }}
+          <template v-else-if="column.key === 'storageLimit'">
+            {{ (record.storageLimit ?? record.storage_limit ?? 0) === 0 ? '不限' : `${record.storageLimit ?? record.storage_limit}MB` }}
           </template>
           <template v-else-if="column.key === 'action'">
             <a-space size="small">
@@ -332,11 +337,11 @@ const pagination = reactive({
 const columns = [
   { title: '套餐名称', dataIndex: 'name', key: 'name', width: 200 },
   { title: '价格', dataIndex: 'price', key: 'price', width: 160 },
-  { title: '有效期', dataIndex: 'duration', key: 'duration', width: 100 },
+  { title: '有效期', dataIndex: 'durationMonths', key: 'duration', width: 100 },
   { title: '文字额度', dataIndex: 'textQuota', key: 'textQuota', width: 120 },
   { title: '图片额度', dataIndex: 'imageQuota', key: 'imageQuota', width: 120 },
-  { title: '设备限制', dataIndex: 'deviceLimit', key: 'deviceLimit', width: 110 },
-  { title: '存储空间', dataIndex: 'storage_limit', key: 'storage_limit', width: 110 },
+  { title: '设备限制', dataIndex: 'deviceCount', key: 'deviceCount', width: 110 },
+  { title: '存储空间', dataIndex: 'storageLimit', key: 'storageLimit', width: 110 },
   { title: '购买人数', dataIndex: 'buyCount', key: 'buyCount', width: 110 },
   { title: '状态', dataIndex: 'status', key: 'status', width: 100 },
   { title: '操作', dataIndex: 'action', key: 'action', width: 160, fixed: 'right' }

@@ -78,4 +78,44 @@
         DELETE FROM corpus WHERE status = 'trashed' AND updated_at &lt; #{beforeTime}
     </delete>
 
+    <!-- ========== 分页查询（修复内存分页问题） ========== -->
+
+    <!-- 按分类分页查询（仅正常状态 status=1） -->
+    <select id="selectByCategoryPage" resultType="com.quicktap.entity.Corpus">
+        SELECT * FROM corpus WHERE category = #{category} AND status = 1
+        ORDER BY created_at DESC LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <!-- 按分类统计总数（仅正常状态 status=1） -->
+    <select id="countByCategory" resultType="long">
+        SELECT COUNT(*) FROM corpus WHERE category = #{category} AND status = 1
+    </select>
+
+    <!-- 回收站分页查询（指定商户，status=0 已删除） -->
+    <select id="selectTrashByMerchantIdPage" resultType="com.quicktap.entity.Corpus">
+        SELECT * FROM corpus WHERE merchant_id = #{merchantId} AND status = 0
+        ORDER BY updated_at DESC LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <!-- 回收站统计总数（指定商户，status=0） -->
+    <select id="countTrashByMerchantId" resultType="long">
+        SELECT COUNT(*) FROM corpus WHERE merchant_id = #{merchantId} AND status = 0
+    </select>
+
+    <!-- 按关键词模糊查询候选集（仅正常状态，用于 search 先 SQL 过滤再内存评分） -->
+    <select id="selectByMerchantIdAndKeyword" resultType="com.quicktap.entity.Corpus">
+        SELECT * FROM corpus
+        WHERE merchant_id = #{merchantId} AND status = 1
+          AND (title LIKE CONCAT('%', #{keyword}, '%') OR content LIKE CONCAT('%', #{keyword}, '%'))
+        ORDER BY created_at DESC
+    </select>
+
+    <!-- 全局按关键词模糊查询候选集（仅正常状态，用于全局 search 优化） -->
+    <select id="selectByKeyword" resultType="com.quicktap.entity.Corpus">
+        SELECT * FROM corpus
+        WHERE status = 1
+          AND (title LIKE CONCAT('%', #{keyword}, '%') OR content LIKE CONCAT('%', #{keyword}, '%'))
+        ORDER BY created_at DESC
+    </select>
+
 </mapper>

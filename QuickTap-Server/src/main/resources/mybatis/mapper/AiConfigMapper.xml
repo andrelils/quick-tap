@@ -23,6 +23,16 @@
         SELECT * FROM ai_config WHERE merchant_id = #{merchantId}
     </select>
 
+    <!-- 分页查询所有商户级配置（merchant_id IS NOT NULL） -->
+    <select id="selectMerchantPage" resultType="com.quicktap.entity.AiConfig">
+        SELECT * FROM ai_config WHERE merchant_id IS NOT NULL ORDER BY updated_at DESC LIMIT #{offset}, #{pageSize}
+    </select>
+
+    <!-- 统计商户级配置总数 -->
+    <select id="countMerchantConfigs" resultType="long">
+        SELECT COUNT(*) FROM ai_config WHERE merchant_id IS NOT NULL
+    </select>
+
     <!-- 更新 AI 配置 -->
     <update id="update">
         UPDATE ai_config

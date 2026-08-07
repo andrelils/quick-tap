@@ -3,7 +3,9 @@ package com.quicktap.service;
 import com.quicktap.entity.Coupon;
 import com.quicktap.exception.BusinessException;
 import com.quicktap.mapper.CouponMapper;
+import com.quicktap.security.OwnershipChecker;
 import com.quicktap.dto.PageResponse;
+import com.quicktap.common.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -18,6 +20,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CouponService {
     private final CouponMapper couponMapper;
+    private final OwnershipChecker ownershipChecker;
 
     /**
      * 获取卡券列表（分页）
@@ -38,11 +41,11 @@ public class CouponService {
      */
     public Coupon getCouponById(Integer id) {
         if (id == null || id <= 0) {
-            throw new BusinessException(400, "卡券ID不能为空");
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "卡券ID不能为空");
         }
         Coupon coupon = couponMapper.selectById(Long.valueOf(id));
         if (coupon == null) {
-            throw new BusinessException(404, "卡券不存在");
+            throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "卡券不存在");
         }
         return coupon;
     }
@@ -52,7 +55,7 @@ public class CouponService {
      */
     public PageResponse<Coupon> getMerchantCouponList(Integer merchantId, Integer pageNum, Integer pageSize) {
         if (merchantId == null || merchantId <= 0) {
-            throw new BusinessException(400, "商户ID不能为空");
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "商户ID不能为空");
         }
         pageNum = Math.max(pageNum, 1);
         pageSize = Math.max(Math.min(pageSize, 100), 1);
@@ -69,20 +72,23 @@ public class CouponService {
      */
     public Coupon createCoupon(Coupon coupon) {
         if (coupon == null || coupon.getMerchantId() == null || coupon.getMerchantId() <= 0) {
-            throw new BusinessException(400, "商户ID不能为空");
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "商户ID不能为空");
         }
         if (coupon.getTitle() == null || coupon.getTitle().trim().isEmpty()) {
-            throw new BusinessException(400, "卡券标题不能为空");
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "卡券标题不能为空");
         }
         if (coupon.getType() == null || coupon.getType().trim().isEmpty()) {
-            throw new BusinessException(400, "卡券类型不能为空");
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "卡券类型不能为空");
         }
         if (coupon.getAmount() == null || coupon.getAmount().compareTo(java.math.BigDecimal.ZERO) <= 0) {
-            throw new BusinessException(400, "金额/比例不能为空或小于等于0");
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "金额/比例不能为空或小于等于0");
         }
         if (coupon.getTotalCount() == null || coupon.getTotalCount() <= 0) {
-            throw new BusinessException(400, "卡券总数必须大于0");
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "卡券总数必须大于0");
         }
+
+        // 越权校验：MERCHANT 角色只能为自己的商户创建卡券，ADMIN/SUPER_ADMIN 可指定任意商户
+        ownershipChecker.checkMerchant(coupon.getMerchantId().longValue());
 
         coupon.setRemainCount(coupon.getTotalCount());
         if (coupon.getStatus() == null) {
@@ -99,11 +105,16 @@ public class CouponService {
      */
     public Coupon updateCoupon(Integer id, Coupon coupon) {
         if (id == null || id <= 0) {
-            throw new BusinessException(400, "卡券ID不能为空");
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "卡券ID不能为空");
         }
         Coupon existing = couponMapper.selectById(Long.valueOf(id));
         if (existing == null) {
-            throw new BusinessException(404, "卡券不存在");
+            throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "卡券不存在");
+        }
+
+        // 越权校验：商户只能修改自己的卡券
+        if (existing.getMerchantId() != null) {
+            ownershipChecker.checkMerchant(existing.getMerchantId().longValue());
         }
 
         if (coupon.getTitle() != null && !coupon.getTitle().isEmpty()) {
@@ -127,6 +138,9 @@ public class CouponService {
         if (coupon.getLink() != null) {
             existing.setLink(coupon.getLink());
         }
+        if (coupon.getDescription() != null) {
+            existing.setDescription(coupon.getDescription());
+        }
 
         couponMapper.update(existing);
         log.info("更新卡券成功, id: {}", id);
@@ -138,11 +152,15 @@ public class CouponService {
      */
     public void deleteCoupon(Integer id) {
         if (id == null || id <= 0) {
-            throw new BusinessException(400, "卡券ID不能为空");
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "卡券ID不能为空");
         }
         Coupon existing = couponMapper.selectById(Long.valueOf(id));
         if (existing == null) {
-            throw new BusinessException(404, "卡券不存在");
+            throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "卡券不存在");
+        }
+        // 越权校验：商户只能删除自己的卡券
+        if (existing.getMerchantId() != null) {
+            ownershipChecker.checkMerchant(existing.getMerchantId().longValue());
         }
         couponMapper.deleteById(Long.valueOf(id));
         log.info("删除卡券成功, id: {}", id);
@@ -153,6 +171,10 @@ public class CouponService {
      */
     public Coupon disableCoupon(Integer id) {
         Coupon coupon = getCouponById(id);
+        // 越权校验：商户只能禁用自己的卡券
+        if (coupon.getMerchantId() != null) {
+            ownershipChecker.checkMerchant(coupon.getMerchantId().longValue());
+        }
         coupon.setStatus(0);
         couponMapper.update(coupon);
         log.info("禁用卡券成功, id: {}", id);
@@ -164,10 +186,37 @@ public class CouponService {
      */
     public Coupon enableCoupon(Integer id) {
         Coupon coupon = getCouponById(id);
+        // 越权校验：商户只能启用自己的卡券
+        if (coupon.getMerchantId() != null) {
+            ownershipChecker.checkMerchant(coupon.getMerchantId().longValue());
+        }
         coupon.setStatus(1);
         couponMapper.update(coupon);
         log.info("启用卡券成功, id: {}", id);
         return coupon;
+    }
+
+    /**
+     * 获取用户已领取的卡券列表（分页）
+     * 通过 user_coupons 关联表查询当前用户已领取的卡券
+     */
+    public PageResponse<Coupon> getUserCouponList(Integer pageNum, Integer pageSize) {
+        pageNum = Math.max(pageNum, 1);
+        pageSize = Math.max(Math.min(pageSize, 100), 1);
+        int offset = (pageNum - 1) * pageSize;
+
+        Long userId = ownershipChecker.getCurrentUserId();
+        if (userId == null) {
+            // 未登录用户返回空列表
+            return PageResponse.of(java.util.Collections.emptyList(), pageNum, pageSize, 0L);
+        }
+
+        List<Coupon> list = couponMapper.selectUserCoupons(userId, offset, pageSize);
+        long total = couponMapper.countUserCoupons(userId);
+
+        log.info("获取用户已领取卡券列表: userId={}, pageNum={}, pageSize={}, total={}",
+                userId, pageNum, pageSize, total);
+        return PageResponse.of(list, pageNum, pageSize, total);
     }
 
     /**
@@ -182,7 +231,7 @@ public class CouponService {
         // 原子递减：通过 SQL 条件更新保证并发安全
         int affected = couponMapper.updateRemainCountDecrement(id.longValue());
         if (affected == 0) {
-            throw new BusinessException(400, "卡券已领完");
+            throw new BusinessException(ErrorCode.INVALID_REQUEST, "卡券已领完");
         }
 
         // 返回最新库存（从数据库重新读取，确保数据准确）

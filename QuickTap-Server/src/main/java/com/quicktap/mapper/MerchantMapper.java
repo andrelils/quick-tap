@@ -48,4 +48,11 @@ public interface MerchantMapper {
      * 按订单数排名查询顶级商户
      */
     List<java.util.Map<String, Object>> selectTopMerchantsByOrders(@Param("limit") Integer limit);
+
+    /**
+     * 按 ID 批量查询商户（仅取 id 和 name，用于设备列表关联商家名）
+     * @param ids 商户 ID 列表
+     * @return 商户列表（仅含 id、name 字段）
+     */
+    List<Merchant> selectByIds(@Param("ids") List<Integer> ids);
 }

@@ -100,7 +100,9 @@ seata:
 # ⚠️  重要: JWT_SECRET 必须通过环境变量设置！
 jwt:
   secret: ${JWT_SECRET}
-  expiration: 604800000  # 7天（毫秒）
+  # Access Token 有效期 2 小时（毫秒），缩短有效期降低 Token 泄露风险
+  # Token 刷新通过 /api/refresh-token 接口完成
+  expiration: 7200000  # 2小时（毫秒）
   header: Authorization
   prefix: Bearer
 

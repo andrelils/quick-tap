@@ -138,30 +138,27 @@ public class SecurityConfig {
                 // 公开接口
                 .requestMatchers("/api/health", "/api/info", "/api/time").permitAll()
 
-                // 认证端点
-                .requestMatchers("/admin/auth/login", "/api/admin/auth/login").permitAll()
-                .requestMatchers("/user/login", "/api/user/login").permitAll()
-                .requestMatchers("/user/auth/wechat-mini", "/api/user/auth/wechat-mini").permitAll()
-                .requestMatchers("/user/register", "/api/user/register").permitAll()
-                .requestMatchers("/user/register-bind", "/api/user/register-bind").permitAll()
-                .requestMatchers("/logout", "/api/logout").permitAll()
-                .requestMatchers("/refresh-token", "/api/refresh-token").permitAll()
-                .requestMatchers("/validate-token", "/api/validate-token").permitAll()
-                .requestMatchers("/csrf-token", "/api/csrf-token").permitAll()
+                // 上传文件静态资源访问（UploadController 保存的文件通过 /uploads/** 访问）
+                .requestMatchers("/uploads/**").permitAll()
 
-                // 静态资源 - 上传文件（图片等）
-                .requestMatchers("/uploads/**", "/api/uploads/**").permitAll()
-
-                // 错误页
-                .requestMatchers("/error").permitAll()
+                // 认证端点（统一 /api 前缀，删除无前缀冗余规则）
+                .requestMatchers("/api/admin/auth/login").permitAll()
+                .requestMatchers("/api/user/login").permitAll()
+                .requestMatchers("/api/user/auth/wechat-mini").permitAll()
+                .requestMatchers("/api/user/register", "/api/user/register-bind").permitAll()
+                .requestMatchers("/api/logout").permitAll()
+                .requestMatchers("/api/refresh-token").permitAll()
+                .requestMatchers("/api/validate-token").permitAll()
+                .requestMatchers("/api/csrf-token").permitAll()
 
                 // Swagger 文档接口
                 .requestMatchers("/doc.html", "/webjars/**", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
                 .requestMatchers("/swagger-ui.html", "/swagger-resources/**").permitAll()
 
                 // C端公开查询接口（必须在角色规则之前声明）
+                // 注意：/api/coupon/** 不再 permitAll，管理端 list 已加 @PreAuthorize；
+                // C 端领券/列券走 /api/miniapp/coupon/** 专门接口
                 .requestMatchers("/api/promotion/**").permitAll()
-                .requestMatchers("/api/coupon/**").permitAll()
                 .requestMatchers("/api/plan/**").permitAll()
                 .requestMatchers("/api/merchant/check-bind").permitAll()
                 .requestMatchers("/api/merchant/info/**").permitAll()
@@ -182,6 +179,9 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/miniapp/user/referrer/list").permitAll()
 
                 // 管理员接口
+                // 头像上传接口允许 MERCHANT 角色使用（必须在 /api/admin/** 通用规则之前声明）
+                .requestMatchers(HttpMethod.POST, "/api/admin/upload/avatar").hasAnyRole("SUPER_ADMIN", "ADMIN", "MERCHANT")
+                .requestMatchers(HttpMethod.POST, "/api/admin/upload/image").hasAnyRole("SUPER_ADMIN", "ADMIN", "MERCHANT")
                 .requestMatchers(HttpMethod.GET, "/api/admin/**").hasAnyRole("SUPER_ADMIN", "ADMIN")
                 .requestMatchers(HttpMethod.POST, "/api/admin/**").hasAnyRole("SUPER_ADMIN", "ADMIN")
                 .requestMatchers(HttpMethod.PUT, "/api/admin/**").hasAnyRole("SUPER_ADMIN", "ADMIN")
@@ -205,6 +205,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.DELETE, "/api/order/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "MERCHANT")
 
                 // 用户接口
+                .requestMatchers(HttpMethod.POST, "/api/user/avatar").hasAnyRole("USER", "ADMIN", "SUPER_ADMIN")
                 .requestMatchers("/api/user/**").hasAnyRole("USER", "SUPER_ADMIN")
 
                 // 其他所有请求都需要认证

@@ -14,10 +14,22 @@
       
       <view class="wifi-qr-section" v-if="wifiInfo">
         <view class="qr-container">
-          <!-- 这里可以放二维码图片 -->
-          <view class="qr-placeholder">
+          <view v-if="!showQrCode" class="qr-placeholder">
             <u-icon name="scan" color="#1677ff" size="80"></u-icon>
             <text class="qr-tip">WiFi二维码</text>
+          </view>
+          <view v-else-if="wifiQrValue" class="qr-code-display" @long-press="downloadQrCode">
+            <view class="qr-code-hint">长按可保存</view>
+            <!-- 使用 QRCode 库生成的图片数据 URL -->
+            <div class="qr-code-wrapper">
+              <image
+                v-if="qrCodeImageUrl"
+                :src="qrCodeImageUrl"
+                class="qr-code-image"
+                mode="aspectFit"
+              />
+              <text v-else class="qr-code-loading">生成中...</text>
+            </div>
           </view>
         </view>
         <text class="qr-desc">使用系统相机扫码自动连接WiFi</text>
@@ -82,10 +94,16 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
+import QRCode from 'qrcode'
 import { getMerchantWifi } from '@/api/merchant'
+import { generateWiFiQrCodeValue, validateWiFiInfo } from '@/utils/qrcode'
 
 const wifiInfo = ref(null)
 const showPassword = ref(false)
+const wifiQrValue = ref('')
+const showQrCode = ref(false)
+const qrCodeLoading = ref(false)
+const qrCodeImageUrl = ref('')
 
 onLoad((options) => {
   const { merchantId } = options
@@ -129,10 +147,70 @@ const copyPassword = () => {
   }
 }
 
-const showWifiQr = () => {
+const showWifiQr = async () => {
+  if (!validateWiFiInfo(wifiInfo.value)) {
+    uni.showToast({
+      title: 'WiFi信息不完整',
+      icon: 'none'
+    })
+    return
+  }
+
+  qrCodeLoading.value = true
+
+  try {
+    // 生成WiFi二维码值（标准格式：WIFI:T:WPA;S:SSID;P:PASSWORD;;）
+    const qrValue = generateWiFiQrCodeValue({
+      ssid: wifiInfo.value.ssid,
+      password: wifiInfo.value.password,
+      encryption: wifiInfo.value.encryption
+    })
+
+    wifiQrValue.value = qrValue
+
+    // 使用QRCode库生成二维码数据URL
+    try {
+      const dataUrl = await QRCode.toDataURL(qrValue, {
+        errorCorrectionLevel: 'H',
+        type: 'image/jpeg',
+        quality: 0.95,
+        margin: 1,
+        width: 300,
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF'
+        }
+      })
+      qrCodeImageUrl.value = dataUrl
+    } catch (qrError) {
+      console.error('QRCode生成失败', qrError)
+      // 即使QRCode生成失败，仍然显示二维码值用于备用
+      qrCodeImageUrl.value = ''
+    }
+
+    showQrCode.value = true
+
+    uni.showToast({
+      title: '二维码已生成',
+      icon: 'success'
+    })
+  } catch (e) {
+    console.error('生成二维码失败', e)
+    uni.showToast({
+      title: e.message || '生成二维码失败',
+      icon: 'none'
+    })
+  } finally {
+    qrCodeLoading.value = false
+  }
+}
+
+const downloadQrCode = () => {
+  if (!showQrCode.value) return
+
   uni.showToast({
-    title: '二维码生成中...',
-    icon: 'loading'
+    title: '长按二维码可保存',
+    icon: 'none'
   })
 }
 </script>
@@ -238,6 +316,48 @@ const showWifiQr = () => {
   align-items: center;
   gap: 16rpx;
   color: #bfbfbf;
+}
+
+.qr-code-display {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+}
+
+.qr-code-hint {
+  font-size: 22rpx;
+  color: #999;
+  position: absolute;
+  top: 12rpx;
+  right: 12rpx;
+  background: rgba(255, 255, 255, 0.8);
+  padding: 4rpx 8rpx;
+  border-radius: 4rpx;
+}
+
+.qr-code-wrapper {
+  width: 280rpx;
+  height: 280rpx;
+  background: #fff;
+  border: 2rpx solid #ddd;
+  border-radius: 8rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8rpx;
+}
+
+.qr-code-value {
+  font-size: 12rpx;
+  color: #666;
+  word-break: break-all;
+  text-align: center;
+  line-height: 1.4;
 }
 
 .qr-tip {

@@ -4,6 +4,7 @@ import com.quicktap.dto.PromotionPlatformDTO;
 import com.quicktap.entity.PromotionPlatform;
 import com.quicktap.exception.BusinessException;
 import com.quicktap.mapper.PromotionPlatformMapper;
+import com.quicktap.common.ErrorCode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
@@ -43,7 +44,7 @@ public class PromotionPlatformService {
         log.info("获取推广平台详情 | id: {}", id);
         PromotionPlatform platform = promotionPlatformMapper.selectById(id.intValue());
         if (platform == null) {
-            throw new BusinessException("推广平台不存在");
+            throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "推广平台不存在");
         }
         return convertToDTO(platform);
     }
@@ -56,7 +57,7 @@ public class PromotionPlatformService {
         log.info("获取推广平台 | code: {}", code);
         PromotionPlatform platform = promotionPlatformMapper.selectByCode(code);
         if (platform == null) {
-            throw new BusinessException("推广平台不存在");
+            throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "推广平台不存在");
         }
         return convertToDTO(platform);
     }
@@ -71,7 +72,7 @@ public class PromotionPlatformService {
         // 检查编码是否重复
         PromotionPlatform existing = promotionPlatformMapper.selectByCode(request.getCode());
         if (existing != null) {
-            throw new BusinessException("平台编码已存在");
+            throw new BusinessException(ErrorCode.DUPLICATE_RESOURCE, "平台编码已存在");
         }
 
         PromotionPlatform platform = PromotionPlatform.builder()
@@ -105,7 +106,7 @@ public class PromotionPlatformService {
 
         PromotionPlatform platform = promotionPlatformMapper.selectById(id.intValue());
         if (platform == null) {
-            throw new BusinessException("推广平台不存在");
+            throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "推广平台不存在");
         }
 
         if (request.getName() != null) {

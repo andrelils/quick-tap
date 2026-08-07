@@ -32,7 +32,10 @@
 
         <view class="wifi-qr-section">
           <view class="qr-container">
-            <view class="qr-placeholder">
+            <!-- 二维码已生成，显示图片 -->
+            <image v-if="wifiQrImageUrl" :src="wifiQrImageUrl" class="qr-image" mode="aspectFit"></image>
+            <!-- 二维码未生成或生成中 -->
+            <view v-else class="qr-placeholder">
               <u-icon name="scan" color="#1677ff" size="80"></u-icon>
               <text class="qr-tip">WiFi二维码</text>
             </view>
@@ -93,19 +96,41 @@
           </view>
         </view>
       </view>
+
+      <!-- WiFi二维码模态框 -->
+      <u-modal v-model="showQrModal" title="WiFi二维码" :show-cancel-button="true" @confirm="saveQrImage" @cancel="closeQrModal" confirm-text="保存" cancel-text="关闭">
+        <view class="qr-modal-content">
+          <image v-if="wifiQrImageUrl" :src="wifiQrImageUrl" class="qr-modal-image" mode="aspectFit"></image>
+          <text class="qr-modal-desc">使用手机系统相机或微信扫描可自动连接到该WiFi</text>
+          <view class="qr-modal-info">
+            <view class="info-item">
+              <text class="info-label">WiFi名称：</text>
+              <text class="info-value">{{ wifiInfo.ssid }}</text>
+            </view>
+            <view class="info-item">
+              <text class="info-label">加密方式：</text>
+              <text class="info-value">{{ wifiInfo.encryption || 'WPA' }}</text>
+            </view>
+          </view>
+        </view>
+      </u-modal>
     </template>
   </view>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { getMerchantWifi } from '@/api/merchant'
+import { generateWifiQrContent, validateWifiInfo } from '@/utils/wifiQrcode'
+import QRCode from 'qrcode'
 
 const wifiInfo = ref(null)
 const showPassword = ref(false)
 const loading = ref(false)
 const errorMessage = ref('')
+const wifiQrImageUrl = ref('')
+const showQrModal = ref(false)
 
 onLoad((options) => {
   const { merchantId } = options
@@ -123,6 +148,8 @@ const loadWifiInfo = async (merchantId) => {
     const res = await getMerchantWifi(merchantId)
     if (res && res.ssid) {
       wifiInfo.value = res
+      // 自动生成二维码
+      await generateQrCode(res)
     } else {
       // 接口返回成功但 SSID 为空，说明商家未配置 WiFi
       wifiInfo.value = res || {}
@@ -132,6 +159,49 @@ const loadWifiInfo = async (merchantId) => {
     errorMessage.value = 'WiFi信息加载失败'
   } finally {
     loading.value = false
+  }
+}
+
+/**
+ * 生成WiFi二维码
+ */
+const generateQrCode = async (wifi) => {
+  try {
+    // 验证WiFi信息
+    const validation = validateWifiInfo(wifi)
+    if (!validation.valid) {
+      console.error('WiFi信息验证失败:', validation.error)
+      wifiQrImageUrl.value = ''
+      return
+    }
+
+    // 生成WiFi QR码内容
+    const qrContent = generateWifiQrContent(
+      wifi.ssid,
+      wifi.password,
+      wifi.encryption || 'WPA',
+      wifi.hidden || false
+    )
+
+    console.log('[WiFi QR]', 'Content:', qrContent)
+
+    // 使用QRCode库生成二维码图片
+    const dataUrl = await QRCode.toDataURL(qrContent, {
+      errorCorrectionLevel: 'H',
+      type: 'image/png',
+      width: 320,
+      margin: 2,
+      color: {
+        dark: '#000000',
+        light: '#FFFFFF'
+      }
+    })
+
+    wifiQrImageUrl.value = dataUrl
+    console.log('[WiFi QR]', 'Generated successfully')
+  } catch (error) {
+    console.error('[WiFi QR] 生成失败:', error)
+    wifiQrImageUrl.value = ''
   }
 }
 
@@ -163,15 +233,67 @@ const copyPassword = () => {
   }
 }
 
+/**
+ * 显示WiFi二维码模态框
+ */
 const showWifiQr = () => {
   if (!wifiInfo.value?.ssid) {
     uni.showToast({ title: '暂无WiFi信息', icon: 'none' })
     return
   }
-  uni.showToast({
-    title: '二维码生成中...',
-    icon: 'loading'
-  })
+
+  if (!wifiQrImageUrl.value) {
+    uni.showToast({ title: '二维码生成中，请稍候...', icon: 'loading' })
+    return
+  }
+
+  showQrModal.value = true
+}
+
+/**
+ * 关闭二维码模态框
+ */
+const closeQrModal = () => {
+  showQrModal.value = false
+}
+
+/**
+ * 保存二维码图片到相册
+ */
+const saveQrImage = async () => {
+  if (!wifiQrImageUrl.value) {
+    uni.showToast({ title: '二维码未生成', icon: 'none' })
+    return
+  }
+
+  try {
+    // #ifdef H5
+    // H5环境下，直接下载
+    const link = document.createElement('a')
+    link.href = wifiQrImageUrl.value
+    link.download = `${wifiInfo.value.ssid}-WiFi.png`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    uni.showToast({ title: '二维码已下载', icon: 'success' })
+    // #endif
+
+    // #ifndef H5
+    // 小程序环境下，保存到相册
+    uni.saveImageToPhotosAlbum({
+      filePath: wifiQrImageUrl.value,
+      success() {
+        uni.showToast({ title: '已保存到相册', icon: 'success' })
+      },
+      fail() {
+        uni.showToast({ title: '保存失败，请检查相册权限', icon: 'none' })
+      }
+    })
+    // #endif
+  } catch (error) {
+    console.error('保存二维码失败:', error)
+    uni.showToast({ title: '保存失败', icon: 'none' })
+  }
 }
 </script>
 
@@ -312,6 +434,12 @@ const showWifiQr = () => {
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
+}
+
+.qr-image {
+  width: 100%;
+  height: 100%;
 }
 
 .qr-placeholder {
@@ -331,6 +459,62 @@ const showWifiQr = () => {
   color: $text-secondary;
   margin-top: $spacing-sm;
   display: block;
+}
+
+// WiFi二维码模态框样式
+.qr-modal-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $spacing-md;
+  padding: $spacing-md 0;
+}
+
+.qr-modal-image {
+  width: 280rpx;
+  height: 280rpx;
+  border-radius: $border-radius;
+  border: 1rpx solid $border-color;
+}
+
+.qr-modal-desc {
+  font-size: $font-size-sm;
+  color: $text-secondary;
+  text-align: center;
+  line-height: 1.6;
+}
+
+.qr-modal-info {
+  width: 100%;
+  background: $bg-gray-light;
+  border-radius: $border-radius;
+  padding: $spacing-md;
+}
+
+.info-item {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  padding: $spacing-sm 0;
+  border-bottom: 1rpx solid $border-color;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.info-label {
+  font-size: $font-size-sm;
+  color: $text-secondary;
+  flex-shrink: 0;
+  min-width: 100rpx;
+}
+
+.info-value {
+  font-size: $font-size-sm;
+  color: $text-primary;
+  flex: 1;
+  text-align: right;
 }
 
 .wifi-info-card {

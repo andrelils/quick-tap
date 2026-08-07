@@ -91,16 +91,29 @@
               <span v-else class="empty-text">未配置</span>
             </a-tooltip>
           </template>
+          <template v-else-if="column.key === 'amount'">
+            <div class="coupon-value-cell">
+              <span class="value-amount">¥{{ formatAmount(record.amount != null ? record.amount : record.value) }}</span>
+              <span class="value-threshold" v-if="Number(record.minAmount || record.threshold || 0) > 0">满{{ Number(record.minAmount || record.threshold) }}可用</span>
+              <span class="value-threshold" v-else>无门槛</span>
+            </div>
+          </template>
+          <template v-else-if="column.key === 'merchantName'">
+            {{ getMerchantName(record.merchantId) }}
+          </template>
+          <template v-else-if="column.key === 'validTime'">
+            {{ formatTime(record.startTime) }} ~ {{ formatTime(record.endTime) }}
+          </template>
           <template v-else-if="column.key === 'status'">
-            <a-tag :color="getStatusColor(record.status)">
-              {{ getStatusName(record.status) }}
+            <a-tag :color="getStatusColor(record)">
+              {{ getStatusName(record) }}
             </a-tag>
           </template>
           <template v-else-if="column.key === 'action'">
             <a-space size="small">
               <a type="link" size="small" @click="handleEdit(record)">编辑</a>
               <a-popconfirm
-                v-if="record.status === 'active'"
+                v-if="record.status === 1"
                 title="确定要停用该优惠券吗？"
                 @confirm="handleToggle(record)"
               >
@@ -185,6 +198,23 @@
         <a-form-item label="优惠券名称" name="name">
           <a-input v-model:value="formData.name" placeholder="请输入优惠券名称，如：满100减20" />
         </a-form-item>
+        <a-row :gutter="16">
+          <a-col :span="8">
+            <a-form-item label="面值（元）" name="value">
+              <a-input-number v-model:value="formData.value" :min="0.01" :precision="2" style="width: 100%" placeholder="如 10" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="8">
+            <a-form-item label="使用门槛（元）" name="threshold">
+              <a-input-number v-model:value="formData.threshold" :min="0" :precision="2" style="width: 100%" placeholder="0 表示无门槛" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="8">
+            <a-form-item label="发行总数" name="totalCount">
+              <a-input-number v-model:value="formData.totalCount" :min="1" :precision="0" style="width: 100%" placeholder="如 100" />
+            </a-form-item>
+          </a-col>
+        </a-row>
         <a-form-item label="第三方平台跳转链接" name="link" required>
           <a-input 
             v-model:value="formData.link" 
@@ -237,13 +267,14 @@
 <script setup>
 import { ref, reactive, onMounted, watch } from 'vue'
 import { message } from 'ant-design-vue'
+import dayjs from 'dayjs'
 import {
   SearchOutlined,
   ReloadOutlined,
   PlusOutlined,
   LinkOutlined
 } from '@ant-design/icons-vue'
-import { getCouponList, createCoupon, updateCoupon, deleteCoupon } from '@/api/marketing'
+import { getCouponList, createCoupon, updateCoupon, deleteCoupon, disableCoupon, enableCoupon } from '@/api/marketing'
 import { getMerchantList } from '@/api/merchant'
 import { useAppStore } from '@/store/app'
 import { useUserStore } from '@/store/user'
@@ -280,6 +311,7 @@ const pagination = reactive({
 
 const columns = [
   { title: '优惠券名称', dataIndex: 'name', key: 'name', width: 220 },
+  { title: '面值', key: 'amount', width: 130 },
   { title: '跳转链接', dataIndex: 'link', key: 'link', width: 320, ellipsis: true },
   { title: '所属商家', dataIndex: 'merchantName', key: 'merchantName', width: 140 },
   { title: '有效期', dataIndex: 'validTime', key: 'validTime', width: 200 },
@@ -321,14 +353,34 @@ const getTypeName = (type) => {
   return map[type] || type
 }
 
-const getStatusName = (status) => {
-  const map = { active: '进行中', expired: '已过期', disabled: '已停用' }
-  return map[status] || status
+// 后端 status: 0停用/1启用；过期按 endTime 判断
+const getStatusName = (record) => {
+  if (!record) return '--'
+  if (record.status === 0) return '已停用'
+  if (record.endTime && new Date(record.endTime).getTime() < Date.now()) return '已过期'
+  return '进行中'
 }
 
-const getStatusColor = (status) => {
-  const map = { active: 'success', expired: 'default', disabled: 'error' }
-  return map[status] || 'default'
+const getStatusColor = (record) => {
+  if (!record) return 'default'
+  if (record.status === 0) return 'error'
+  if (record.endTime && new Date(record.endTime).getTime() < Date.now()) return 'default'
+  return 'success'
+}
+
+const getMerchantName = (merchantId) => {
+  const m = merchantOptions.value.find(o => String(o.value) === String(merchantId))
+  return m ? m.label : '--'
+}
+
+const formatTime = (time) => {
+  if (!time) return '--'
+  return dayjs(time).format('YYYY-MM-DD HH:mm')
+}
+
+const formatAmount = (amount) => {
+  if (amount === null || amount === undefined || amount === '') return '0.00'
+  return Number(amount).toFixed(2)
 }
 
 const loadData = async () => {
@@ -346,9 +398,17 @@ const loadData = async () => {
     }
     if (searchForm.status !== undefined) params.status = searchForm.status
     const res = await getCouponList(params)
-    const list = res.list || res || []
-    dataSource.value = Array.isArray(list) ? list : []
-    pagination.total = res.total || 0
+    let list = Array.isArray(res.list || res) ? (res.list || res) : []
+    // 后端接口不支持 status 过滤，前端按状态筛选
+    if (searchForm.status === 'disabled') {
+      list = list.filter(i => i.status === 0)
+    } else if (searchForm.status === 'expired') {
+      list = list.filter(i => i.status === 1 && i.endTime && new Date(i.endTime).getTime() < Date.now())
+    } else if (searchForm.status === 'active') {
+      list = list.filter(i => i.status === 1 && (!i.endTime || new Date(i.endTime).getTime() >= Date.now()))
+    }
+    dataSource.value = list
+    pagination.total = searchForm.status ? list.length : (res.total || 0)
   } catch (e) {
     console.error('加载优惠券列表失败', e)
     dataSource.value = []
@@ -399,14 +459,14 @@ const handleEdit = (record) => {
   Object.assign(formData, {
     id: record.id,
     merchantId: record.merchantId,
-    type: record.type,
+    type: record.type || 'cash',
     name: record.name || record.title,
     value: record.value || record.amount,
     threshold: record.threshold || record.minAmount || 0,
     totalCount: record.totalCount,
     limitPerUser: 1,
-    startTime: null,
-    endTime: null,
+    startTime: record.startTime ? dayjs(record.startTime) : null,
+    endTime: record.endTime ? dayjs(record.endTime) : null,
     description: record.description || '',
     link: record.link || ''
   })
@@ -415,8 +475,13 @@ const handleEdit = (record) => {
 
 const handleToggle = async (record) => {
   try {
-    await updateCoupon(record.id, { status: record.status === 'active' ? 'disabled' : 'active' })
-    message.success(record.status === 'active' ? '已停用' : '已启用')
+    if (record.status === 1) {
+      await disableCoupon(record.id)
+      message.success('已停用')
+    } else {
+      await enableCoupon(record.id)
+      message.success('已启用')
+    }
     loadData()
   } catch (e) {
     console.error('更新优惠券状态失败', e)
@@ -449,7 +514,8 @@ const handleSubmit = async () => {
       totalCount: formData.totalCount,
       startTime: formData.startTime,
       endTime: formData.endTime,
-      link: formData.link
+      link: formData.link,
+      description: formData.description
     }
     
     if (isEdit.value) {
@@ -573,6 +639,23 @@ onMounted(() => {
 .empty-text {
   color: $text-tertiary;
   font-size: 12px;
+}
+
+.coupon-value-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  .value-amount {
+    font-size: 16px;
+    font-weight: 600;
+    color: #ff4d4f;
+  }
+
+  .value-threshold {
+    font-size: 12px;
+    color: $text-tertiary;
+  }
 }
 
 .pagination-wrapper {

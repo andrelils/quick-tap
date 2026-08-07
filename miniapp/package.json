@@ -1,7 +1,7 @@
 {
   "name": "quick-tap-miniapp",
   "version": "1.0.0",
-  "description": "晓居智能 - C端小程序",
+  "description": "碰一碰好评卡 - C端小程序",
   "main": "main.js",
   "scripts": {
     "dev:h5": "uni",
@@ -14,6 +14,7 @@
     "@dcloudio/uni-h5": "3.0.0-4010520240507001",
     "@dcloudio/uni-mp-weixin": "3.0.0-4010520240507001",
     "pinia": "^2.1.7",
+    "qrcode": "^1.5.4",
     "uview-plus": "^3.2.8",
     "vue": "^3.4.21"
   },

@@ -72,6 +72,14 @@ export const updateCoupon = (id, data) => {
   return request.put(`/coupon/${id}`, data)
 }
 
+export const disableCoupon = (id) => {
+  return request.put(`/coupon/${id}/disable`)
+}
+
+export const enableCoupon = (id) => {
+  return request.put(`/coupon/${id}/enable`)
+}
+
 export const deleteCoupon = (id) => {
   return request.delete(`/coupon/${id}`)
 }

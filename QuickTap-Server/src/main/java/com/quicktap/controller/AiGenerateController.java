@@ -1,5 +1,6 @@
 package com.quicktap.controller;
 
+import com.quicktap.dto.AiGenerateRequest;
 import com.quicktap.dto.ApiResponse;
 import com.quicktap.dto.PageResponse;
 import com.quicktap.entity.AiGenerateRecord;
@@ -23,24 +24,93 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api")
 @Validated
-@CrossOrigin(origins = "*", maxAge = 3600)
+
 @RequiredArgsConstructor
 public class AiGenerateController {
 
     private final AiGenerateService aiGenerateService;
     private final SecurityUtil securityUtil;
 
+    // ============================================================================
+    // 管理员路由别名 - /api/admin/ai/generate/*
+    // ============================================================================
+
     /**
-     * 文本内容生成（商户端/管理员端）
-     * 匹配 Node.js: POST /api/merchant/ai-generate/text
+     * 文本内容生成（管理员端别名）
+     * 对应 Node: POST /api/admin/ai/generate/text
      */
+    @PostMapping("/admin/ai/generate/text")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
+    public ApiResponse<AiGenerateRecord> generateTextAdmin(
+            @RequestBody AiGenerateRequest request) {
+        log.info("文本生成请求(管理员): merchantId={}, promptLen={}", request.getMerchantId(), request.getPrompt().length());
+        AiGenerateRecord result = aiGenerateService.generateText(request.getMerchantId(), request.getPrompt());
+        return ApiResponse.success("生成成功", result);
+    }
+
+    /**
+     * 图片内容生成（管理员端别名）
+     * 对应 Node: POST /api/admin/ai/generate/image
+     */
+    @PostMapping("/admin/ai/generate/image")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
+    public ApiResponse<AiGenerateRecord> generateImageAdmin(
+            @RequestBody AiGenerateRequest request) {
+        log.info("图片生成请求(管理员): merchantId={}, promptLen={}", request.getMerchantId(), request.getPrompt().length());
+        AiGenerateRecord result = aiGenerateService.generateImage(request.getMerchantId(), request.getPrompt());
+        return ApiResponse.success("生成成功", result);
+    }
+
+    /**
+     * 视频内容生成（管理员端别名）
+     * 对应 Node: POST /api/admin/ai/generate/video
+     */
+    @PostMapping("/admin/ai/generate/video")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
+    public ApiResponse<AiGenerateRecord> generateVideoAdmin(
+            @RequestBody AiGenerateRequest request) {
+        log.info("视频生成请求(管理员): merchantId={}, promptLen={}", request.getMerchantId(), request.getPrompt().length());
+        AiGenerateRecord result = aiGenerateService.generateVideo(request.getMerchantId(), request.getPrompt());
+        return ApiResponse.success("生成成功", result);
+    }
+
+    /**
+     * 获取生成历史（管理员端别名）
+     * 对应 Node: GET /api/admin/ai/generate/history
+     */
+    @GetMapping("/admin/ai/generate/history")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
+    public ApiResponse<PageResponse<AiGenerateRecord>> getHistoryAdmin(
+            @RequestParam(required = false) Integer merchantId,
+            @RequestParam(required = false) String type,
+            @RequestParam(defaultValue = "1") Integer pageNum,
+            @RequestParam(defaultValue = "10") Integer pageSize) {
+        Integer mid = resolveMerchantId(merchantId);
+        log.info("获取生成历史(管理员): merchantId={}, type={}", mid, type);
+        if (mid == null) {
+            PageResponse<AiGenerateRecord> empty = PageResponse.<AiGenerateRecord>builder()
+                    .list(java.util.Collections.emptyList()).pageNum(pageNum).pageSize(pageSize).total(0L).build();
+            return ApiResponse.success("获取成功", empty);
+        }
+        PageResponse<AiGenerateRecord> result = aiGenerateService.getGenerationHistory(
+                mid, type, pageNum, pageSize);
+        return ApiResponse.success("获取成功", result);
+    }
+
+    // ============================================================================
+    // 商户路由 - /api/merchant/ai-generate/*（原有路由）
+    // ============================================================================
     @PostMapping("/merchant/ai-generate/text")
     @PreAuthorize("hasAnyRole('MERCHANT', 'ADMIN', 'SUPER_ADMIN')")
     public ApiResponse<AiGenerateRecord> generateText(
             @RequestParam(required = false) Integer merchantId,
-            @NotBlank(message = "提示词不能为空") @RequestParam String prompt) {
+            @RequestBody Map<String, Object> body) {
+        String prompt = body.get("prompt") == null ? null : String.valueOf(body.get("prompt"));
+        if (prompt == null || prompt.trim().isEmpty()) {
+            return ApiResponse.badRequest("提示词不能为空");
+        }
         Integer mid = resolveMerchantId(merchantId);
-        log.info("文本生成请求: merchantId={}, prompt={}", mid, prompt);
+        log.info("文本生成请求: merchantId={}, promptLen={}", mid, prompt.length());
         if (mid == null) {
             return ApiResponse.badRequest("缺少 merchantId 参数");
         }
@@ -51,14 +121,19 @@ public class AiGenerateController {
     /**
      * 图片内容生成（商户端/管理员端）
      * 匹配 Node.js: POST /api/merchant/ai-generate/image
+     * 注意：prompt 通过 RequestBody 传递，避免长 prompt 被 URL 截断
      */
     @PostMapping("/merchant/ai-generate/image")
     @PreAuthorize("hasAnyRole('MERCHANT', 'ADMIN', 'SUPER_ADMIN')")
     public ApiResponse<AiGenerateRecord> generateImage(
             @RequestParam(required = false) Integer merchantId,
-            @NotBlank(message = "提示词不能为空") @RequestParam String prompt) {
+            @RequestBody Map<String, Object> body) {
+        String prompt = body.get("prompt") == null ? null : String.valueOf(body.get("prompt"));
+        if (prompt == null || prompt.trim().isEmpty()) {
+            return ApiResponse.badRequest("提示词不能为空");
+        }
         Integer mid = resolveMerchantId(merchantId);
-        log.info("图片生成请求: merchantId={}, prompt={}", mid, prompt);
+        log.info("图片生成请求: merchantId={}, promptLen={}", mid, prompt.length());
         if (mid == null) {
             return ApiResponse.badRequest("缺少 merchantId 参数");
         }
@@ -69,14 +144,19 @@ public class AiGenerateController {
     /**
      * 视频内容生成（商户端/管理员端）
      * 匹配 Node.js: POST /api/merchant/ai-generate/video
+     * 注意：prompt 通过 RequestBody 传递，避免长 prompt 被 URL 截断
      */
     @PostMapping("/merchant/ai-generate/video")
     @PreAuthorize("hasAnyRole('MERCHANT', 'ADMIN', 'SUPER_ADMIN')")
     public ApiResponse<AiGenerateRecord> generateVideo(
             @RequestParam(required = false) Integer merchantId,
-            @NotBlank(message = "提示词不能为空") @RequestParam String prompt) {
+            @RequestBody Map<String, Object> body) {
+        String prompt = body.get("prompt") == null ? null : String.valueOf(body.get("prompt"));
+        if (prompt == null || prompt.trim().isEmpty()) {
+            return ApiResponse.badRequest("提示词不能为空");
+        }
         Integer mid = resolveMerchantId(merchantId);
-        log.info("视频生成请求: merchantId={}, prompt={}", mid, prompt);
+        log.info("视频生成请求: merchantId={}, promptLen={}", mid, prompt.length());
         if (mid == null) {
             return ApiResponse.badRequest("缺少 merchantId 参数");
         }
