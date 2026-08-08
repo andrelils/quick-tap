@@ -184,6 +184,11 @@ public class SecurityConfig {
                 // 头像上传接口允许 MERCHANT 角色使用（必须在 /api/admin/** 通用规则之前声明）
                 .requestMatchers(HttpMethod.POST, "/api/admin/upload/avatar").hasAnyRole("SUPER_ADMIN", "ADMIN", "MERCHANT")
                 .requestMatchers(HttpMethod.POST, "/api/admin/upload/image").hasAnyRole("SUPER_ADMIN", "ADMIN", "MERCHANT")
+                // 商家登录后台必需：当前用户信息 + 商家自身仪表盘统计（必须在 /api/admin/** 通用规则之前声明）
+                .requestMatchers(HttpMethod.GET, "/api/admin/user/info").hasAnyRole("SUPER_ADMIN", "ADMIN", "MERCHANT")
+                .requestMatchers(HttpMethod.GET, "/api/admin/statistics/**").hasAnyRole("SUPER_ADMIN", "ADMIN", "MERCHANT")
+                // 系统配置（设备URL前缀等）商家端页面也需要读取，仅开放 GET
+                .requestMatchers(HttpMethod.GET, "/api/admin/system/settings").hasAnyRole("SUPER_ADMIN", "ADMIN", "MERCHANT")
                 .requestMatchers(HttpMethod.GET, "/api/admin/**").hasAnyRole("SUPER_ADMIN", "ADMIN")
                 .requestMatchers(HttpMethod.POST, "/api/admin/**").hasAnyRole("SUPER_ADMIN", "ADMIN")
                 .requestMatchers(HttpMethod.PUT, "/api/admin/**").hasAnyRole("SUPER_ADMIN", "ADMIN")

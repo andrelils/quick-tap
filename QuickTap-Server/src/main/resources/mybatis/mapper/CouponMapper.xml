@@ -75,7 +75,7 @@
     <!-- 获取用户已领取的卡券列表 (通过 user_coupons 关联表) -->
     <select id="selectUserCoupons" resultMap="CouponResultMap">
         SELECT c.* FROM coupon c
-        INNER JOIN user_coupons uc ON c.id = uc.coupon_id
+        INNER JOIN user_coupon uc ON c.id = uc.coupon_id
         WHERE uc.user_id = #{userId}
         ORDER BY uc.created_at DESC
         LIMIT #{offset}, #{pageSize}
@@ -83,7 +83,7 @@
 
     <!-- 统计用户已领取的卡券数量 -->
     <select id="countUserCoupons" resultType="long">
-        SELECT COUNT(*) FROM user_coupons WHERE user_id = #{userId}
+        SELECT COUNT(*) FROM user_coupon WHERE user_id = #{userId}
     </select>
 
     <!-- 按商户ID和状态查询 -->
@@ -100,6 +100,12 @@
     <update id="updateRemainCountIncrement">
         UPDATE coupon SET remain_count = remain_count + 1, updated_at = NOW() WHERE id = #{id} AND remain_count <![CDATA[<]]> total_count
     </update>
+
+    <!-- 记录用户领取卡券 -->
+    <insert id="insertUserCoupon">
+        INSERT INTO user_coupon (user_id, coupon_id, status, created_at)
+        VALUES (#{userId}, #{couponId}, 1, NOW())
+    </insert>
 
     <!-- 过期卡券状态更新 -->
     <update id="updateExpiredCoupons">

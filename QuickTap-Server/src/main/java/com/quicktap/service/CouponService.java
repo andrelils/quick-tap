@@ -234,6 +234,12 @@ public class CouponService {
             throw new BusinessException(ErrorCode.INVALID_REQUEST, "卡券已领完");
         }
 
+        // 记录用户领取关系（我的卡券列表依赖此记录）
+        Long userId = ownershipChecker.getCurrentUserId();
+        if (userId != null) {
+            couponMapper.insertUserCoupon(userId, id.longValue());
+        }
+
         // 返回最新库存（从数据库重新读取，确保数据准确）
         coupon.setRemainCount(coupon.getRemainCount() - 1);
         log.info("领取卡券成功, id: {}", id);

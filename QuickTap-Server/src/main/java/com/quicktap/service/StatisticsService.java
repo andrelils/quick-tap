@@ -325,6 +325,56 @@ public class StatisticsService {
     }
 
     /**
+     * 获取商户维度的趋势数据（商家仪表盘：仅自身订单/收入）
+     */
+    public Map<String, Object> getMerchantTrend(LocalDate startDate, LocalDate endDate, Integer merchantId) {
+        Map<String, Object> trend = new HashMap<>();
+        try {
+            if (startDate == null || endDate == null) {
+                startDate = LocalDate.now().minusDays(30);
+                endDate = LocalDate.now();
+            }
+            List<Map<String, Object>> ordersByDate = orderMapper
+                .selectOrdersGroupedByDateByMerchant(merchantId, startDate.atStartOfDay(), endDate.atTime(23, 59, 59));
+            List<Map<String, Object>> revenueByDate = orderMapper
+                .selectRevenueGroupedByDateByMerchant(merchantId, startDate.atStartOfDay(), endDate.atTime(23, 59, 59));
+
+            List<String> dates = new ArrayList<>();
+            List<Integer> orders = new ArrayList<>();
+            List<Double> revenue = new ArrayList<>();
+
+            for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
+                dates.add(date.toString());
+                LocalDate finalDate = date;
+                Map<String, Object> orderData = ordersByDate.stream()
+                    .filter(m -> m.get("date").equals(java.sql.Date.valueOf(finalDate)))
+                    .findFirst()
+                    .orElse(Map.of("count", 0));
+                orders.add(((Number) orderData.get("count")).intValue());
+                Map<String, Object> revenueData = revenueByDate.stream()
+                    .filter(m -> m.get("date").equals(java.sql.Date.valueOf(finalDate)))
+                    .findFirst()
+                    .orElse(Map.of("total", 0.0));
+                revenue.add(((Number) revenueData.get("total")).doubleValue());
+            }
+
+            trend.put("startDate", startDate.toString());
+            trend.put("endDate", endDate.toString());
+            trend.put("dates", dates);
+            trend.put("orders", orders);
+            trend.put("revenue", revenue);
+            trend.put("newUsers", new ArrayList<>());
+        } catch (Exception e) {
+            log.error("❌ 获取商户趋势失败 (merchantId={}): {}", merchantId, e.getMessage(), e);
+            trend.put("dates", new ArrayList<>());
+            trend.put("orders", new ArrayList<>());
+            trend.put("revenue", new ArrayList<>());
+            trend.put("newUsers", new ArrayList<>());
+        }
+        return trend;
+    }
+
+    /**
      * 获取商户统计 (TODO 7)
      */
     public Map<String, Object> getMerchantStatistics(Integer merchantId) {

@@ -131,6 +131,16 @@
                     <a-input v-model:value="formData.wifiPassword" placeholder="请输入 WiFi 密码" allow-clear />
                   </a-form-item>
                 </a-col>
+                <a-col :span="12">
+                  <a-form-item label="WiFi 加密方式" name="wifiEncryption">
+                    <a-select v-model:value="formData.wifiEncryption" placeholder="请选择加密方式（影响扫码连接）">
+                      <a-select-option value="WPA2">WPA2（推荐，绝大多数路由器）</a-select-option>
+                      <a-select-option value="WPA">WPA</a-select-option>
+                      <a-select-option value="WEP">WEP</a-select-option>
+                      <a-select-option value="nopass">无密码（开放网络）</a-select-option>
+                    </a-select>
+                  </a-form-item>
+                </a-col>
               </a-row>
             </a-form>
           </div>
@@ -331,6 +341,7 @@ const formData = reactive({
   businessHours: '',
   wifiName: '',
   wifiPassword: '',
+  wifiEncryption: 'WPA2',
   description: ''
 })
 
@@ -470,6 +481,7 @@ const loadData = async () => {
       businessHours: res.businessHours || '',
       wifiName: res.wifiName || '',
       wifiPassword: res.wifiPassword || '',
+      wifiEncryption: res.wifiEncryption || 'WPA2',
       description: res.description || ''
     })
     logoFileList.value = res.logo ? [{
@@ -510,6 +522,7 @@ const handleSave = async () => {
       businessHours: formData.businessHours || '',
       wifiName: formData.wifiName || '',
       wifiPassword: formData.wifiPassword || '',
+      wifiEncryption: formData.wifiEncryption || 'WPA2',
       description: formData.description
     })
     message.success('保存成功')
@@ -536,6 +549,7 @@ const goBack = () => {
     businessHours: formData.businessHours || '',
     wifiName: formData.wifiName || '',
     wifiPassword: formData.wifiPassword || '',
+    wifiEncryption: formData.wifiEncryption || 'WPA2',
     description: formData.description
   })
 

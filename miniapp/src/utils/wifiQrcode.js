@@ -19,7 +19,7 @@
  * @param {boolean} hidden - 是否隐藏网络 (默认false)
  * @returns {string} WiFi QR码内容
  */
-export function generateWifiQrContent(ssid, password, encryption = 'WPA', hidden = false) {
+export function generateWifiQrContent(ssid, password, encryption = 'WPA2', hidden = false) {
   if (!ssid) {
     throw new Error('SSID不能为空')
   }
@@ -28,14 +28,14 @@ export function generateWifiQrContent(ssid, password, encryption = 'WPA', hidden
   const escapedSsid = escapeWifiString(ssid)
   const escapedPassword = password ? escapeWifiString(password) : ''
 
-  // 确保加密方式有效
-  const validEncryption = ['WPA', 'WEP', 'nopass'].includes(encryption) ? encryption : 'WPA'
+  // 规范化加密方式：兼容 WPA2/WPA-PSK/WPA/WPA2-PSK 等写法；open/无/无加密 视为 nopass
+  const validEncryption = normalizeEncryption(encryption)
 
   // 构建WiFi QR码
   let qrContent = `WIFI:T:${validEncryption};S:${escapedSsid}`
 
-  // 只有在有密码时才添加密码
-  if (escapedPassword) {
+  // 只有非开放网络且有密码时才添加密码
+  if (validEncryption !== 'nopass' && escapedPassword) {
     qrContent += `;P:${escapedPassword}`
   }
 
@@ -48,6 +48,22 @@ export function generateWifiQrContent(ssid, password, encryption = 'WPA', hidden
   qrContent += ';;'
 
   return qrContent
+}
+
+/**
+ * 规范化 WiFi 加密方式
+ * 数据库/商家填写常见：WPA2、WPA/WPA2、WPA-PSK、WPA2-PSK、open、无、无加密 等
+ * 保持 WPA2 原样输出（iOS/Android 相机识别 WPA2 网络需要 T:WPA2，写成 WPA 会拒绝连接）
+ */
+function normalizeEncryption(encryption) {
+  const t = String(encryption || '').trim().toLowerCase()
+  if (!t || t === 'nopass' || t === 'none' || t === 'open' || t === '无' || t === '无加密' || t === '无密码') {
+    return 'nopass'
+  }
+  if (t.includes('wep')) return 'WEP'
+  if (t.includes('wpa2')) return 'WPA2'
+  if (t.includes('wpa')) return 'WPA'
+  return 'WPA2'
 }
 
 /**

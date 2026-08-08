@@ -39,13 +39,13 @@
     </view>
 
     <!-- 第二部分：优惠券领取 -->
-    <view class="section" v-if="coupons.length > 0">
+    <view class="section">
       <view class="section-header">
         <view class="section-title-bar"></view>
         <text class="section-title">优惠券领取</text>
-        <text class="section-sub">共 {{ coupons.length }} 张</text>
+        <text class="section-sub">{{ coupons.length > 0 ? '共 ' + coupons.length + ' 张' : '' }}</text>
       </view>
-      <view class="coupon-list">
+      <view class="coupon-list" v-if="coupons.length > 0">
         <view
           v-for="coupon in coupons"
           :key="'c-' + coupon.id"
@@ -72,6 +72,14 @@
             </view>
           </view>
         </view>
+      </view>
+      <!-- 无优惠券空态 -->
+      <view class="coupon-empty" v-else>
+        <view class="coupon-empty-icon">
+          <view class="icon-coupon-empty"></view>
+        </view>
+        <text class="coupon-empty-text">暂无优惠券</text>
+        <text class="coupon-empty-sub">商家暂未发布优惠券，敬请期待</text>
       </view>
     </view>
 
@@ -158,15 +166,30 @@
       </view>
     </view>
 
-    <!-- 个人中心入口 -->
-    <view class="mine-entry section" @tap="goToMine">
-      <view class="mine-entry-left">
-        <view class="icon-user-circle" :style="{ width: '40rpx', height: '40rpx' }"></view>
-        <text class="mine-entry-text">个人中心</text>
+    <!-- 加老板微信弹窗 -->
+    <u-modal
+      :show="showWechatModal"
+      title="添加老板微信"
+      :show-confirm-button="false"
+      :show-cancel-button="false"
+      @update:show="v => showWechatModal = v"
+    >
+      <view class="wechat-modal-content">
+        <view class="wechat-qr-wrapper" v-if="bossWechatQr">
+          <image :src="bossWechatQr" class="wechat-qr-image" mode="aspectFit" @longpress="longPressWechatQr" show-menu-by-longpress></image>
+          <text class="wechat-qr-tip">长按识别二维码添加</text>
+        </view>
+        <view class="wechat-id-row">
+          <text class="wechat-id-label">微信号</text>
+          <text class="wechat-id-value">{{ merchantInfo?.bossWechat }}</text>
+          <view class="wechat-copy-btn" @tap="copyWechat">
+            <u-icon name="file-text" size="14" color="#ffffff"></u-icon>
+            <text>复制</text>
+          </view>
+        </view>
+        <text class="wechat-modal-tip">复制微信号后，打开微信搜索添加</text>
       </view>
-      <text class="mine-entry-sub">我的设备 / 推广记录 / 扫描记录</text>
-      <u-icon name="arrow-right" size="18" color="#999"></u-icon>
-    </view>
+    </u-modal>
 
     <view class="bottom-safe"></view>
   </view>
@@ -297,29 +320,36 @@ const handleCouponTap = (coupon) => {
   }
 }
 
+const showWechatModal = ref(false)
+
+// 老板微信二维码（预留：merchant 接口返回 bossWechatQr 时展示，支持长按识别）
+const bossWechatQr = computed(() => merchantInfo.value?.bossWechatQr || merchantInfo.value?.boss_wechat_qr || '')
+
 const handleAddWechat = () => {
   const wechat = merchantInfo.value?.bossWechat
   if (!wechat) {
     uni.showToast({ title: '老板未配置微信', icon: 'none' })
     return
   }
+  // 小程序/浏览器无法直接调起微信 App 添加好友，弹窗展示微信号 + 一键复制，提示去微信搜索添加
+  showWechatModal.value = true
+}
+
+const copyWechat = () => {
+  const wechat = merchantInfo.value?.bossWechat
+  if (!wechat) return
   uni.setClipboardData({
     data: wechat,
     success: () => {
-      uni.showModal({
-        title: '加老板微信',
-        content: `老板微信号已复制：${wechat}\n请打开微信搜索添加`,
-        confirmText: '去添加',
-        showCancel: false
-      })
+      uni.showToast({ title: '微信号已复制', icon: 'success' })
     }
   })
 }
 
-const goToMine = () => {
-  uni.navigateTo({
-    url: '/pages/user/mine'
-  })
+const longPressWechatQr = () => {
+  if (bossWechatQr.value) {
+    uni.previewImage({ urls: [bossWechatQr.value] })
+  }
 }
 
 const goToWifi = () => {
@@ -455,31 +485,6 @@ const formatDate = (date) => {
   box-shadow: $shadow-sm;
 }
 
-.mine-entry {
-  display: flex;
-  align-items: center;
-  gap: $spacing-sm;
-  padding: $spacing-md;
-}
-
-.mine-entry-left {
-  display: flex;
-  align-items: center;
-  gap: $spacing-sm;
-}
-
-.mine-entry-text {
-  font-size: 30rpx;
-  font-weight: 600;
-  color: $text-primary;
-}
-
-.mine-entry-sub {
-  flex: 1;
-  font-size: 24rpx;
-  color: $text-secondary;
-}
-
 .section-header {
   display: flex;
   align-items: center;
@@ -596,6 +601,48 @@ const formatDate = (date) => {
 
 .claim-btn.disabled {
   background: $text-placeholder;
+}
+
+/* 优惠券空态 */
+.coupon-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 60rpx 0;
+  gap: $spacing-xs;
+}
+
+.coupon-empty-icon {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 50%;
+  background: $bg-gray-light;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: $spacing-sm;
+}
+
+.coupon-empty-text {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: $text-regular;
+}
+
+.coupon-empty-sub {
+  font-size: 24rpx;
+  color: $text-placeholder;
+}
+
+.icon-coupon-empty {
+  width: 64rpx;
+  height: 64rpx;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23d9d9d9'%3E%3Cpath d='M20 12c0 .55.45 1 1 1v4c0 1.1-.9 2-2 2H5c-1.1 0-2-.9-2-2v-4c.55 0 1-.45 1-1s-.45-1-1-1V7c0-1.1.9-2 2-2h14c1.1 0 2 .9 2 2v4c-.55 0-1 .45-1 1zM15 7v2h2V7h-2zm-3 7.5c.83 0 1.5-.67 1.5-1.5s-.67-1.5-1.5-1.5-1.5.67-1.5 1.5.67 1.5 1.5 1.5z'/%3E%3C/svg%3E");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  display: inline-block;
+  vertical-align: middle;
 }
 
 .empty-block {
@@ -741,6 +788,77 @@ const formatDate = (date) => {
 
 .bottom-safe {
   height: 40rpx;
+}
+
+/* 加老板微信弹窗 */
+.wechat-modal-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $spacing-md;
+  padding: $spacing-sm 0;
+}
+
+.wechat-qr-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $spacing-xs;
+}
+
+.wechat-qr-image {
+  width: 360rpx;
+  height: 360rpx;
+  border-radius: $border-radius;
+  border: 1rpx solid $border-color;
+}
+
+.wechat-qr-tip {
+  font-size: 22rpx;
+  color: $text-placeholder;
+}
+
+.wechat-id-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  background: $bg-gray-light;
+  border-radius: $border-radius;
+  padding: $spacing-md;
+}
+
+.wechat-id-label {
+  font-size: $font-size-sm;
+  color: $text-secondary;
+  flex-shrink: 0;
+}
+
+.wechat-id-value {
+  flex: 1;
+  font-size: $font-size-md;
+  font-weight: 600;
+  color: $text-primary;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wechat-copy-btn {
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+  padding: 10rpx $spacing-md;
+  background: $success-color;
+  border-radius: $border-radius-full;
+  color: $text-white;
+  font-size: $font-size-sm;
+  flex-shrink: 0;
+}
+
+.wechat-modal-tip {
+  font-size: $font-size-sm;
+  color: $text-secondary;
 }
 
 .icon-map-marker-white {

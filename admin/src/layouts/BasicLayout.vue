@@ -29,7 +29,7 @@
           <span>仪表盘</span>
         </a-menu-item>
 
-        <a-sub-menu v-if="canAccess('merchant') && !isMerchantView" key="merchant">
+        <a-sub-menu v-if="canAccess('merchant') && !isMerchantView && !userStore.isMerchant" key="merchant">
           <template #icon>
             <ShopOutlined />
           </template>
@@ -59,7 +59,7 @@
           <template #title>AI创作</template>
           <a-menu-item key="/ai/generate">AI创作</a-menu-item>
           <a-menu-item key="/ai/corpus">语料管理</a-menu-item>
-          <a-menu-item key="/ai/config">创作配置</a-menu-item>
+          <a-menu-item v-if="userStore.hasPermission('ai.config')" key="/ai/config">创作配置</a-menu-item>
           <a-menu-item v-if="userStore.isAdmin && !isMerchantView" key="/ai/merchant-config">商家配置总览</a-menu-item>
         </a-sub-menu>
 
@@ -80,10 +80,10 @@
             <SettingOutlined />
           </template>
           <template #title>系统设置</template>
-          <a-menu-item v-if="(canAccess('settings') || canAccess('system')) && !isMerchantView" key="/system/settings">系统配置</a-menu-item>
+          <a-menu-item v-if="(canAccess('settings') || canAccess('system')) && !isMerchantView && !userStore.isMerchant" key="/system/settings">系统配置</a-menu-item>
           <a-menu-item key="/system/profile">个人中心</a-menu-item>
-          <a-menu-item v-if="(canAccess('user') || canAccess('system')) && !isMerchantView" key="/system/user">用户管理</a-menu-item>
-          <a-menu-item v-if="(canAccess('role') || canAccess('system')) && !isMerchantView" key="/system/role">角色管理</a-menu-item>
+          <a-menu-item v-if="(canAccess('user') || canAccess('system')) && !isMerchantView && !userStore.isMerchant" key="/system/user">用户管理</a-menu-item>
+          <a-menu-item v-if="(canAccess('role') || canAccess('system')) && !isMerchantView && !userStore.isMerchant" key="/system/role">角色管理</a-menu-item>
           <a-menu-item v-if="userStore.isSuperAdmin && !isMerchantView" key="/system/merchant-access">商家权限配置</a-menu-item>
           <a-menu-item v-if="userStore.isMerchant || isMerchantView" key="/system/my-quota">当前额度</a-menu-item>
         </a-sub-menu>
@@ -399,7 +399,7 @@ const handleOpenChange = (keys) => {
 }
 
 onMounted(() => {
-  if (userStore.isLoggedIn && !userStore.userInfo) {
+  if (userStore.isLoggedIn && (!userStore.userInfo || !userStore.userInfo.permissions)) {
     userStore.fetchUserInfo().catch(() => {})
   }
   if (userStore.isAdmin) {

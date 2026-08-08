@@ -36,7 +36,7 @@ public class SystemController {
      * 读取 system_setting 表全部 key-value，以对象形式返回。
      */
     @GetMapping("/settings")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'MERCHANT')")
     public ApiResponse<Map<String, Object>> getSettings() {
         log.info("获取系统设置");
         return ApiResponse.success("获取成功", systemSettingService.getAllSettings());

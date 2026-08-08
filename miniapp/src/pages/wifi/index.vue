@@ -32,8 +32,21 @@
 
         <view class="wifi-qr-section">
           <view class="qr-container">
-            <!-- 二维码已生成，显示图片 -->
+            <!-- H5：qrcode npm 生成高清图片二维码（浏览器 canvas，保证可扫） -->
             <image v-if="wifiQrImageUrl" :src="wifiQrImageUrl" class="qr-image" mode="aspectFit"></image>
+            <!-- 小程序：u-qrcode canvas 二维码 -->
+            <u-qrcode
+              v-else-if="wifiQrValue"
+              ref="pageQrRef"
+              :val="wifiQrValue"
+              use-root-height-and-width
+              :lv="3"
+              :quiet-zone="4"
+              background="#ffffff"
+              foreground="#000000"
+              loading-text="二维码生成中"
+              @longpressCallback="onQrLongpress"
+            ></u-qrcode>
             <!-- 二维码未生成或生成中 -->
             <view v-else class="qr-placeholder">
               <u-icon name="scan" color="#1677ff" size="80"></u-icon>
@@ -48,25 +61,25 @@
             <text class="info-label">WiFi名称</text>
             <text class="info-value">{{ wifiInfo.ssid }}</text>
             <view class="copy-btn" @tap="copyText(wifiInfo.ssid)">
-              <u-icon name="copy" size="24" color="#1677ff"></u-icon>
+              <u-icon name="file-text" size="16" color="#1677ff"></u-icon>
             </view>
           </view>
           <view class="info-row">
             <text class="info-label">WiFi密码</text>
             <text class="info-value">{{ showPassword ? wifiInfo.password : '********' }}</text>
             <view class="copy-btn" @tap="togglePassword">
-              <u-icon :name="showPassword ? 'eye' : 'eye-fill'" size="24" color="#1677ff"></u-icon>
+              <u-icon :name="showPassword ? 'eye' : 'eye-fill'" size="16" color="#1677ff"></u-icon>
             </view>
           </view>
           <view class="info-row">
             <text class="info-label">加密方式</text>
-            <text class="info-value">{{ wifiInfo.encryption || 'WPA' }}</text>
+            <text class="info-value">{{ wifiInfo.encryption || 'WPA2' }}</text>
           </view>
         </view>
 
         <view class="action-buttons">
           <button class="action-btn primary" @tap="copyPassword">
-            <u-icon name="copy" color="#fff" size="28"></u-icon>
+            <u-icon name="file-text" color="#fff" size="28"></u-icon>
             <text>复制密码</text>
           </button>
           <button class="action-btn secondary" @tap="showWifiQr">
@@ -100,7 +113,26 @@
       <!-- WiFi二维码模态框（u-modal 用 show prop 控制，v-model 不生效） -->
       <u-modal :show="showQrModal" title="WiFi二维码" :show-cancel-button="true" @confirm="saveQrImage" @cancel="closeQrModal" @update:show="v => showQrModal = v" confirm-text="保存" cancel-text="关闭">
         <view class="qr-modal-content">
-          <image v-if="wifiQrImageUrl" :src="wifiQrImageUrl" class="qr-modal-image" mode="aspectFit"></image>
+          <view class="qr-modal-box">
+            <!-- H5：高清图片二维码 -->
+            <image v-if="wifiQrImageUrl" :src="wifiQrImageUrl" class="qr-modal-image" mode="aspectFit"></image>
+            <!-- 小程序：u-qrcode canvas 二维码 -->
+            <u-qrcode
+              v-else-if="wifiQrValue"
+              ref="modalQrRef"
+              :val="wifiQrValue"
+              use-root-height-and-width
+              :lv="3"
+              :quiet-zone="4"
+              background="#ffffff"
+              foreground="#000000"
+              loading-text="二维码生成中"
+            ></u-qrcode>
+            <view v-else class="qr-placeholder">
+              <u-icon name="scan" color="#1677ff" size="80"></u-icon>
+              <text class="qr-tip">WiFi二维码</text>
+            </view>
+          </view>
           <text class="qr-modal-desc">使用手机系统相机或微信扫描可自动连接到该WiFi</text>
           <view class="qr-modal-info">
             <view class="info-item">
@@ -109,7 +141,7 @@
             </view>
             <view class="info-item">
               <text class="info-label">加密方式：</text>
-              <text class="info-value">{{ wifiInfo.encryption || 'WPA' }}</text>
+              <text class="info-value">{{ wifiInfo.encryption || 'WPA2' }}</text>
             </view>
           </view>
         </view>
@@ -119,18 +151,25 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { getMerchantWifi } from '@/api/merchant'
 import { generateWifiQrContent, validateWifiInfo } from '@/utils/wifiQrcode'
+// #ifdef H5
 import QRCode from 'qrcode'
+// #endif
 
 const wifiInfo = ref(null)
 const showPassword = ref(false)
 const loading = ref(false)
 const errorMessage = ref('')
+// WiFi QR 码内容（标准 WIFI: 协议字符串）
+const wifiQrValue = ref('')
+// H5 端高清图片二维码（qrcode npm 生成）
 const wifiQrImageUrl = ref('')
 const showQrModal = ref(false)
+const pageQrRef = ref(null)
+const modalQrRef = ref(null)
 
 onLoad((options) => {
   const { merchantId } = options
@@ -148,7 +187,7 @@ const loadWifiInfo = async (merchantId) => {
     const res = await getMerchantWifi(merchantId)
     if (res && res.ssid) {
       wifiInfo.value = res
-      // 自动生成二维码
+      // 生成二维码内容，各端各自渲染
       await generateQrCode(res)
     } else {
       // 接口返回成功但 SSID 为空，说明商家未配置 WiFi
@@ -163,46 +202,50 @@ const loadWifiInfo = async (merchantId) => {
 }
 
 /**
- * 生成WiFi二维码
+ * 生成 WiFi 二维码内容（标准格式 WIFI:T:WPA;S:SSID;P:密码;;）
+ * H5 额外生成高清图片；小程序由 u-qrcode canvas 渲染
  */
 const generateQrCode = async (wifi) => {
+  // 验证WiFi信息
+  const validation = validateWifiInfo(wifi)
+  if (!validation.valid) {
+    console.error('WiFi信息验证失败:', validation.error)
+    wifiQrValue.value = ''
+    wifiQrImageUrl.value = ''
+    return
+  }
+
+  // 生成WiFi QR码内容
+  const qrContent = generateWifiQrContent(
+    wifi.ssid,
+    wifi.password,
+    wifi.encryption || 'WPA2',
+    wifi.hidden || false
+  )
+
+  console.log('[WiFi QR]', 'Content:', qrContent)
+  wifiQrValue.value = qrContent
+
+  // #ifdef H5
+  // H5：qrcode npm 生成高清图片（浏览器 canvas 可用，保证可扫码）
   try {
-    // 验证WiFi信息
-    const validation = validateWifiInfo(wifi)
-    if (!validation.valid) {
-      console.error('WiFi信息验证失败:', validation.error)
-      wifiQrImageUrl.value = ''
-      return
-    }
-
-    // 生成WiFi QR码内容
-    const qrContent = generateWifiQrContent(
-      wifi.ssid,
-      wifi.password,
-      wifi.encryption || 'WPA',
-      wifi.hidden || false
-    )
-
-    console.log('[WiFi QR]', 'Content:', qrContent)
-
-    // 使用QRCode库生成二维码图片
     const dataUrl = await QRCode.toDataURL(qrContent, {
       errorCorrectionLevel: 'H',
       type: 'image/png',
-      width: 320,
-      margin: 2,
+      width: 512,
+      margin: 4,
       color: {
         dark: '#000000',
         light: '#FFFFFF'
       }
     })
-
     wifiQrImageUrl.value = dataUrl
-    console.log('[WiFi QR]', 'Generated successfully')
+    console.log('[WiFi QR]', 'Generated successfully (H5 image)')
   } catch (error) {
-    console.error('[WiFi QR] 生成失败:', error)
+    console.error('[WiFi QR] H5 生成失败:', error)
     wifiQrImageUrl.value = ''
   }
+  // #endif
 }
 
 const togglePassword = () => {
@@ -242,7 +285,7 @@ const showWifiQr = () => {
     return
   }
 
-  if (!wifiQrImageUrl.value) {
+  if (!wifiQrValue.value) {
     uni.showToast({ title: '二维码生成中，请稍候...', icon: 'loading' })
     return
   }
@@ -258,19 +301,51 @@ const closeQrModal = () => {
 }
 
 /**
- * 保存二维码图片到相册
+ * 从 u-qrcode 画布导出二维码图片（小程序端使用，H5 返回临时文件路径）
+ */
+const exportQrFile = async () => {
+  const qrRef = modalQrRef.value || pageQrRef.value
+  if (!qrRef || typeof qrRef.toTempFilePath !== 'function') return ''
+  try {
+    const res = await new Promise((resolve, reject) => {
+      qrRef.toTempFilePath({ success: resolve, fail: reject })
+    })
+    return res && (res.tempFilePath || res.apFilePath) || ''
+  } catch (e) {
+    console.error('导出二维码失败', e)
+    return ''
+  }
+}
+
+/**
+ * 保存二维码图片（H5 下载，小程序保存到相册）
  */
 const saveQrImage = async () => {
-  if (!wifiQrImageUrl.value) {
+  if (!wifiQrValue.value) {
     uni.showToast({ title: '二维码未生成', icon: 'none' })
     return
   }
 
   try {
+    let filePath = ''
+    // #ifdef H5
+    // H5：直接使用 qrcode npm 生成的 dataURL 图片
+    filePath = wifiQrImageUrl.value
+    // #endif
+    // #ifndef H5
+    // 小程序：从 u-qrcode 画布导出
+    filePath = await exportQrFile()
+    // #endif
+
+    if (!filePath) {
+      uni.showToast({ title: '二维码未生成', icon: 'none' })
+      return
+    }
+
     // #ifdef H5
     // H5环境下，直接下载
     const link = document.createElement('a')
-    link.href = wifiQrImageUrl.value
+    link.href = filePath
     link.download = `${wifiInfo.value.ssid}-WiFi.png`
     document.body.appendChild(link)
     link.click()
@@ -281,7 +356,7 @@ const saveQrImage = async () => {
     // #ifndef H5
     // 小程序环境下，保存到相册
     uni.saveImageToPhotosAlbum({
-      filePath: wifiQrImageUrl.value,
+      filePath,
       success() {
         uni.showToast({ title: '已保存到相册', icon: 'success' })
       },
@@ -294,6 +369,13 @@ const saveQrImage = async () => {
     console.error('保存二维码失败:', error)
     uni.showToast({ title: '保存失败', icon: 'none' })
   }
+}
+
+/**
+ * 长按页面二维码：保存到相册/下载
+ */
+const onQrLongpress = () => {
+  saveQrImage()
 }
 </script>
 
@@ -426,8 +508,8 @@ const saveQrImage = async () => {
 }
 
 .qr-container {
-  width: 320rpx;
-  height: 320rpx;
+  width: 380rpx;
+  height: 380rpx;
   margin: 0 auto;
   background: $bg-gray-light;
   border-radius: $border-radius;
@@ -470,11 +552,20 @@ const saveQrImage = async () => {
   padding: $spacing-md 0;
 }
 
-.qr-modal-image {
+.qr-modal-box {
   width: 280rpx;
   height: 280rpx;
   border-radius: $border-radius;
   border: 1rpx solid $border-color;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.qr-modal-image {
+  width: 100%;
+  height: 100%;
+  border-radius: $border-radius;
 }
 
 .qr-modal-desc {
@@ -548,7 +639,10 @@ const saveQrImage = async () => {
 }
 
 .copy-btn {
-  padding: $spacing-xs;
+  padding: 4rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .action-buttons {

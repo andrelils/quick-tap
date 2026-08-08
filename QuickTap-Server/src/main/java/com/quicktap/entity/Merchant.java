@@ -21,6 +21,7 @@ public class Merchant extends BaseEntity {
     private String address;            // 商户地址
     private String wifiName;           // 门店WiFi名称
     private String wifiPassword;       // WiFi密码
+    private String wifiEncryption;     // WiFi加密方式(WPA2/WPA/WEP/nopass)
     private Integer auditStatus;       // 审核状态：0待审核/1通过/2拒绝
     private Integer status;            // 状态：1启用/0停用
     private Integer planId;            // 套餐ID

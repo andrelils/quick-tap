@@ -68,13 +68,21 @@ public interface OrderMapper {
      * 按日期分组查询订单数量
      */
     List<java.util.Map<String, Object>> selectOrdersGroupedByDate(
-        @Param("startDateTime") java.time.LocalDateTime startDateTime,
-        @Param("endDateTime") java.time.LocalDateTime endDateTime);
+            @Param("startDateTime") java.time.LocalDateTime startDateTime,
+            @Param("endDateTime") java.time.LocalDateTime endDateTime);
 
-    /**
-     * 按日期分组查询收入
-     */
     List<java.util.Map<String, Object>> selectRevenueGroupedByDate(
-        @Param("startDateTime") java.time.LocalDateTime startDateTime,
-        @Param("endDateTime") java.time.LocalDateTime endDateTime);
+            @Param("startDateTime") java.time.LocalDateTime startDateTime,
+            @Param("endDateTime") java.time.LocalDateTime endDateTime);
+
+    // 商家维度的按日分组统计（商家仪表盘趋势）
+    List<java.util.Map<String, Object>> selectOrdersGroupedByDateByMerchant(
+            @Param("merchantId") Integer merchantId,
+            @Param("startDateTime") java.time.LocalDateTime startDateTime,
+            @Param("endDateTime") java.time.LocalDateTime endDateTime);
+
+    List<java.util.Map<String, Object>> selectRevenueGroupedByDateByMerchant(
+            @Param("merchantId") Integer merchantId,
+            @Param("startDateTime") java.time.LocalDateTime startDateTime,
+            @Param("endDateTime") java.time.LocalDateTime endDateTime);
 }

@@ -64,8 +64,8 @@
     </select>
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO merchant (name, logo, contact_name, contact_phone, address, wifi_name, wifi_password, audit_status, status, plan_id, storage_used, storage_limit, text_quota_limit, image_quota_limit, video_quota_limit, banner_images, boss_wechat, business_hours, shop_images, referrer_code, description, created_at, updated_at)
-        VALUES (#{name}, #{logo}, #{contactName}, #{contactPhone}, #{address}, #{wifiName}, #{wifiPassword}, #{auditStatus}, #{status}, #{planId}, #{storageUsed}, #{storageLimit}, #{textQuotaLimit}, #{imageQuotaLimit}, #{videoQuotaLimit}, #{bannerImages}, #{bossWechat}, #{businessHours}, #{shopImages}, #{referrerCode}, #{description}, NOW(), NOW())
+        INSERT INTO merchant (name, logo, contact_name, contact_phone, address, wifi_name, wifi_password, wifi_encryption, audit_status, status, plan_id, storage_used, storage_limit, text_quota_limit, image_quota_limit, video_quota_limit, banner_images, boss_wechat, business_hours, shop_images, referrer_code, description, created_at, updated_at)
+        VALUES (#{name}, #{logo}, #{contactName}, #{contactPhone}, #{address}, #{wifiName}, #{wifiPassword}, #{wifiEncryption}, #{auditStatus}, #{status}, #{planId}, #{storageUsed}, #{storageLimit}, #{textQuotaLimit}, #{imageQuotaLimit}, #{videoQuotaLimit}, #{bannerImages}, #{bossWechat}, #{businessHours}, #{shopImages}, #{referrerCode}, #{description}, NOW(), NOW())
     </insert>
 
     <update id="update">
@@ -77,6 +77,7 @@
         address = #{address},
         wifi_name = #{wifiName},
         wifi_password = #{wifiPassword},
+        wifi_encryption = #{wifiEncryption},
         audit_status = #{auditStatus},
         status = #{status},
         plan_id = #{planId},

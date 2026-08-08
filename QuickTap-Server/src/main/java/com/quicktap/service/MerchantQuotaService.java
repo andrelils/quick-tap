@@ -265,7 +265,8 @@ public class MerchantQuotaService {
             throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "套餐不存在");
         }
         Plan oldPlan = getPlanOrNull(merchant);
-        if (newPlan.getStorageLimit() < merchant.getStorageUsed()) {
+        long usedStorage = merchant.getStorageUsed() == null ? 0 : merchant.getStorageUsed();
+        if (newPlan.getStorageLimit() < usedStorage) {
             throw new BusinessException(ErrorCode.INVALID_REQUEST, "新套餐的存储空间不足以容纳当前已使用的空间");
         }
         merchant.setPlanId(newPlanId);

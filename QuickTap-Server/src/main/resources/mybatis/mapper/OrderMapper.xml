@@ -164,4 +164,20 @@
         ORDER BY date ASC
     </select>
 
+    <select id="selectOrdersGroupedByDateByMerchant" resultType="map">
+        SELECT DATE(created_at) as date, COUNT(*) as count
+        FROM order_record
+        WHERE merchant_id = #{merchantId} AND created_at BETWEEN #{startDateTime} AND #{endDateTime}
+        GROUP BY DATE(created_at)
+        ORDER BY date ASC
+    </select>
+
+    <select id="selectRevenueGroupedByDateByMerchant" resultType="map">
+        SELECT DATE(created_at) as date, COALESCE(SUM(amount), 0) as total
+        FROM order_record
+        WHERE merchant_id = #{merchantId} AND created_at BETWEEN #{startDateTime} AND #{endDateTime} AND status = 'paid'
+        GROUP BY DATE(created_at)
+        ORDER BY date ASC
+    </select>
+
 </mapper>

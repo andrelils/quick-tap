@@ -128,7 +128,7 @@ const handleLogin = async () => {
       password: loginForm.password
     })
 
-    if (res.token && !userStore.userInfo) {
+    if (res.token) {
       try {
         await userStore.fetchUserInfo()
       } catch (e) {

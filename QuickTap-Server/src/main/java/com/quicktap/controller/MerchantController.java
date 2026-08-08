@@ -6,6 +6,7 @@ import com.quicktap.dto.MerchantUpdateRequest;
 import com.quicktap.dto.PageResponse;
 import com.quicktap.entity.Merchant;
 import com.quicktap.service.MerchantService;
+import com.quicktap.security.SecurityUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -26,6 +27,9 @@ public class MerchantController {
     @Autowired
     private MerchantService merchantService;
 
+    @Autowired
+    private SecurityUtil securityUtil;
+
     // ============================================================================
     // STATIC ROUTES - All static routes must come before dynamic routes
     // ============================================================================
@@ -35,7 +39,7 @@ public class MerchantController {
      * 支持分页（page 或 pageNum）、关键词搜索（名称/联系人/电话）、状态过滤
      */
     @GetMapping("/list")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'MERCHANT')")
     public ApiResponse<PageResponse<Merchant>> getMerchantList(
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer pageNum,
@@ -45,6 +49,22 @@ public class MerchantController {
         int pn = (page != null && page > 0) ? page : (pageNum != null && pageNum > 0 ? pageNum : 1);
         if (pageSize == null || pageSize <= 0 || pageSize > 200) {
             pageSize = 10;
+        }
+        // 商户角色只能看到自己的商家信息
+        if (securityUtil.isMerchant()) {
+            Long merchantId = securityUtil.getCurrentMerchantId();
+            if (merchantId == null) {
+                return ApiResponse.success("获取成功", PageResponse.of(List.of(), pn, pageSize, 0L));
+            }
+            Merchant merchant = merchantService.getMerchantById(merchantId.intValue());
+            if (merchant == null) {
+                return ApiResponse.success("获取成功", PageResponse.of(List.of(), pn, pageSize, 0L));
+            }
+            if (keyword != null && !keyword.trim().isEmpty()
+                    && (merchant.getName() == null || !merchant.getName().contains(keyword.trim()))) {
+                return ApiResponse.success("获取成功", PageResponse.of(List.of(), pn, pageSize, 0L));
+            }
+            return ApiResponse.success("获取成功", PageResponse.of(List.of(merchant), pn, pageSize, 1L));
         }
         log.info("获取商户列表: page={}, pageSize={}, keyword={}, status={}", pn, pageSize, keyword, status);
         List<Merchant> list = merchantService.getMerchantList(pn, pageSize, keyword, status);

@@ -7,6 +7,7 @@ import com.quicktap.dto.DeviceUpdateRequest;
 import com.quicktap.entity.Device;
 import com.quicktap.service.DeviceService;
 import com.quicktap.service.MerchantService;
+import com.quicktap.security.SecurityUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -43,6 +44,7 @@ import java.util.stream.Collectors;
 public class DeviceController {
     private final DeviceService deviceService;
     private final MerchantService merchantService;
+    private final SecurityUtil securityUtil;
 
     // ============================================================================
     // STATIC ROUTES - All static routes must come before dynamic routes
@@ -53,15 +55,23 @@ public class DeviceController {
      * STATIC ROUTE: Must appear before /{id}
      */
     @GetMapping("/list")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'MERCHANT')")
     public ApiResponse<PageResponse<Map<String, Object>>> listDevices(
             @RequestParam(defaultValue = "1") Integer pageNum,
             @RequestParam(defaultValue = "10") Integer pageSize) {
-        PageResponse<Device> data = deviceService.getDeviceList(pageNum, pageSize);
+        PageResponse<Device> data;
+        if (securityUtil.isMerchant()) {
+            Long merchantId = securityUtil.getCurrentMerchantId();
+            data = merchantId != null
+                    ? deviceService.getMerchantDeviceList(merchantId.intValue(), pageNum, pageSize)
+                    : PageResponse.of(List.of(), pageNum, pageSize, 0L);
+        } else {
+            data = deviceService.getDeviceList(pageNum, pageSize);
+        }
         // 将扁平设备列表按名称+systemCode 分组为设备套
         List<Map<String, Object>> sets = groupDevicesToSets(data.getList());
-        PageResponse<Map<String, Object>> result = PageResponse.of(
-                sets, pageNum, pageSize, deviceService.countDeviceSets());
+        long total = securityUtil.isMerchant() ? data.getTotal() : deviceService.countDeviceSets();
+        PageResponse<Map<String, Object>> result = PageResponse.of(sets, pageNum, pageSize, total);
         return ApiResponse.success("获取成功", result);
     }
 

@@ -28,5 +28,6 @@ public interface CouponMapper {
     long countUserCoupons(@Param("userId") Long userId);
     int updateRemainCountDecrement(@Param("id") Long id);
     int updateRemainCountIncrement(@Param("id") Long id);
+    int insertUserCoupon(@Param("userId") Long userId, @Param("couponId") Long couponId);
     int updateExpiredCoupons(@Param("beforeTime") LocalDateTime beforeTime);
 }

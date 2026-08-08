@@ -5,6 +5,7 @@ import com.quicktap.dto.PageResponse;
 import com.quicktap.dto.OrderCreateRequest;
 import com.quicktap.entity.Order;
 import com.quicktap.service.OrderService;
+import com.quicktap.security.SecurityUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -24,17 +25,26 @@ import jakarta.validation.constraints.NotNull;
 @Validated
 public class OrderController {
     private final OrderService orderService;
+    private final SecurityUtil securityUtil;
 
     // ============================================================================
     // STATIC ROUTES - All static routes must come before dynamic routes
     // ============================================================================
 
     @GetMapping("/list")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'MERCHANT')")
     public ApiResponse<PageResponse<java.util.Map<String, Object>>> listOrders(
             @RequestParam(defaultValue = "1") Integer pageNum,
             @RequestParam(defaultValue = "10") Integer pageSize) {
-        PageResponse<java.util.Map<String, Object>> data = orderService.getOrderList(pageNum, pageSize);
+        PageResponse<java.util.Map<String, Object>> data;
+        if (securityUtil.isMerchant()) {
+            Long merchantId = securityUtil.getCurrentMerchantId();
+            data = merchantId != null
+                    ? orderService.getMerchantOrderList(merchantId.intValue(), pageNum, pageSize)
+                    : PageResponse.of(java.util.List.of(), pageNum, pageSize, 0L);
+        } else {
+            data = orderService.getOrderList(pageNum, pageSize);
+        }
         return ApiResponse.success("获取成功", data);
     }
 
@@ -72,6 +82,12 @@ public class OrderController {
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'ADMIN', 'MERCHANT')")
     public ApiResponse<Order> getOrder(@PathVariable @NotNull Integer id) {
         Order order = orderService.getOrderById(id);
+        if (order != null && securityUtil.isMerchant()) {
+            Long merchantId = securityUtil.getCurrentMerchantId();
+            if (merchantId == null || !merchantId.equals(Long.valueOf(order.getMerchantId()))) {
+                return ApiResponse.forbidden("无权访问该订单");
+            }
+        }
         return ApiResponse.success("获取成功", order);
     }
 
@@ -81,6 +97,12 @@ public class OrderController {
             @PathVariable @NotNull Integer merchantId,
             @RequestParam(defaultValue = "1") Integer pageNum,
             @RequestParam(defaultValue = "10") Integer pageSize) {
+        if (securityUtil.isMerchant()) {
+            Long currentMerchantId = securityUtil.getCurrentMerchantId();
+            if (currentMerchantId == null || !currentMerchantId.equals(Long.valueOf(merchantId))) {
+                return ApiResponse.forbidden("无权访问该商户订单");
+            }
+        }
         PageResponse<java.util.Map<String, Object>> data = orderService.getMerchantOrderList(merchantId, pageNum, pageSize);
         return ApiResponse.success("获取成功", data);
     }

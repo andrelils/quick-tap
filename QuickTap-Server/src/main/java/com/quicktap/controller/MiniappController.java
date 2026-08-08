@@ -196,7 +196,7 @@ public class MiniappController {
     public ApiResponse<Map<String, Object>> merchantWifi(@RequestParam("merchantId") Integer merchantId) {
         log.info("小程序-商家 WiFi | merchantId: {}", merchantId);
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(
-                "SELECT id, name, wifi_name, wifi_password FROM merchant WHERE id = ? AND status = 1 LIMIT 1", merchantId);
+                "SELECT id, name, wifi_name, wifi_password, wifi_encryption FROM merchant WHERE id = ? AND status = 1 LIMIT 1", merchantId);
         if (rows.isEmpty()) {
             return ApiResponse.notFound("商家不存在或已停用");
         }
@@ -204,6 +204,7 @@ public class MiniappController {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("ssid", m.get("wifi_name"));
         result.put("password", m.get("wifi_password"));
+        result.put("encryption", m.get("wifi_encryption"));
         result.put("merchantName", m.get("name"));
         return ApiResponse.success(result);
     }
